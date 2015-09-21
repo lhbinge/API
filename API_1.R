@@ -11,9 +11,11 @@ library(plyr)
 library(dplyr)
 library(reshape2)
 library(stargazer)
+library(micEcon)
+library(quantreg)
 
 #setwd("C:/Users/Laurie/OneDrive/Documents/BING/METRICS/PhD Proposal Readings/Art Price Index")
-setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art Price Index")
+setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art Price Index\\R Code")
 
 #library(rJava)
 #library(xlsxjars)
@@ -123,6 +125,7 @@ for(i in 1:8) {
 }    
 
 artdata <- merge(artdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
+
 
 
 ##======================##
@@ -265,7 +268,7 @@ g
 ## REGREESION MODELS ##
 ##===================##
 
-list_expl_vars=c("lnarea","lnarea2","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
+list_expl_vars=c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
                  "nr_works","artist","timedummy")
 expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
 
@@ -515,22 +518,65 @@ g
 #----------------------------------
 
 source("full_model.R")
-expl_vars=c("lnarea","ah_code","dum_signed", "dum_dated","nr_works","artist","timedummy")
-drawing     <- full_model(subset(artdata, artdata$med_code="Drawing"),expl_vars)
-watercolour <- full_model(subset(artdata, artdata$med_code="Watercolour"),expl_vars)
-oil         <- full_model(subset(artdata, artdata$med_code="Oil"),expl_vars)
-acrylic     <- full_model(subset(artdata, artdata$med_code="Acrylic"),expl_vars)
-print       <- full_model(subset(artdata, artdata$med_code="Print/Woodcut"),expl_vars)
-mixed       <- full_model(subset(artdata, artdata$med_code="Mixed Media"),expl_vars)
-sculpture   <- full_model(subset(artdata, artdata$med_code="Sculpture"),expl_vars)
-photo       <- full_model(subset(artdata, artdata$med_code="Photography"),expl_vars)
-other       <- full_model(subset(artdata, artdata$med_code="Other"),expl_vars)
+expl_vars=c("lnarea","ah_code","dum_signed","dum_dated","nr_works","lnrep","timedummy")
+drawing     <- full_model(subset(artdata, artdata$med_code=="Drawing"),expl_vars)
+watercolour <- full_model(subset(artdata, artdata$med_code=="Watercolour"),expl_vars)
+oil         <- full_model(subset(artdata, artdata$med_code=="Oil"),expl_vars)
+acrylic     <- full_model(subset(artdata, artdata$med_code=="Acrylic"),expl_vars)
+print       <- full_model(subset(artdata, artdata$med_code=="Print/Woodcut"),expl_vars)
+mixed       <- full_model(subset(artdata, artdata$med_code=="Mixed Media"),expl_vars)
+sculpture   <- full_model(subset(artdata, artdata$med_code=="Sculpture"),expl_vars)
+photo       <- full_model(subset(artdata, artdata$med_code=="Photography"),expl_vars)
+other       <- full_model(subset(artdata, artdata$med_code=="Other"),expl_vars)
+
+l <- list(drawing,watercolour,oil,acrylic,print,mixed,sculpture,photo,other)
+l <- lapply(l, function(x) data.frame(x, rn = row.names(x)))
+mediums <- merge(l[1], l[2], by="rn", all=TRUE) # merge by row names (by=0 or by="row.names")
+for(i in 3:9) { mediums <- merge(mediums, l[i], by="rn", all=TRUE)}
+mediums <- mediums[,c(-1,-2,-4,-6,-8,-10,-12,-14,-16,-18)]
+names(mediums) <- c("drawing","watercolour","oil","acrylic","print","mixed","sculpture","photo","other")
+mediums <- rbind(c(100,100,100,100,100,100,100,100,100),mediums)
 
 #weight by sales value
+sales <- aggregate(artdata$hammer_price,by=list(artdata$med_code,artdata$timedummy),FUN=sum,na.rm=TRUE)
+sales <- dcast(sales, Group.2 ~ Group.1)
+sales <- sales[-1]
+sales <- sales/rowSums(sales,na.rm =TRUE)
 
+w.ave <- as.data.frame(rowSums(mediums*sales,na.rm=TRUE))
 
+hed_strat <- cbind(mediums,sales)
+hed_strat[is.na(hed_strat)] <- 0
+Las <- priceIndex(c("drawing","watercolour","oil","acrylic","print","mixed","sculpture","photo","other"),
+           c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut","Mixed Media","Sculpture","Photography", 
+             "Other"), 1, hed_strat, "Laspeyres" ,na.rm=TRUE)
+Paas <- priceIndex(c("drawing","watercolour","oil","acrylic","print","mixed","sculpture","photo","other"),
+                  c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut","Mixed Media","Sculpture","Photography", 
+                    "Other"), 1, hed_strat, "Paasche" ,na.rm=TRUE)
+Fish <- priceIndex(c("drawing","watercolour","oil","acrylic","print","mixed","sculpture","photo","other"),
+                  c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut","Mixed Media","Sculpture","Photography", 
+                    "Other"), 1, hed_strat, "Fisher" ,na.rm=TRUE)
 
-#Look at stratification by price category - Soos Federke?
+Las <- as.data.frame(Las*100)
+Paas <- as.data.frame(Paas*100)
+Fish <- as.data.frame(Fish*100)
+
+index_plot <- rolling[,c(1,2)]
+index_plot <- cbind(index_plot,Stat_Hedonic=w.ave[-1,])
+index_plot <- cbind(index_plot,Laspeyres=Las[-1,])
+index_plot <- cbind(index_plot,Paasche=Paas[-1,])
+index_plot <- cbind(index_plot,Fisher=Fish[-1,])
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+#png(file = "Hedonic Stratified.png", width=600,height=360)
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
+g
+#dev.off()
 
 
 ##===============================##
@@ -803,7 +849,6 @@ artdata <- merge(artdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
 
 for(i in 2:(max(artdata$rank_total))) {
     ##maak dit 'n function waaroor jy sapply?????
-    sbx <- 0
     list_vars <- c(list_expl_vars,"price")
     
     #geometric average of paintings by artist y
@@ -817,56 +862,57 @@ for(i in 2:(max(artdata$rank_total))) {
     pym1 <-  exp(mean(log(ym1$price)))
     #pym1 <- max(cumprod(ym1$price^(1/nrow(ym1))))
     
+    sbx <- 0
     #average of characteristics time implicit attribute price
     xy <- mean(y$lnarea)
     xym1 <- mean(ym1$lnarea)   
     b <- summary(model_100)$coefficients[grepl("lnarea", rownames(summary(model_100)$coefficients)),1]
-    bx <- b*(xy-xym1)   
+    bx <- b*(xym1-xy)   
     sbx <- sbx + bx
     
     xy <- mean(y$lnsculpt_area)
     xym1 <- mean(ym1$lnsculpt_area)   
     b <- summary(model_100)$coefficients[grepl("lnsculpt_area", rownames(summary(model_100)$coefficients)),1]
-    bx <- b*(xy-xym1)   
+    bx <- b*(xym1-xy)   
     sbx <- sbx + bx
     
     xy <- mean(y$nr_works)
     xym1 <- mean(ym1$nr_works)   
     b <- summary(model_100)$coefficients[grepl("nr_works", rownames(summary(model_100)$coefficients)),1]
-    bx <- b*(xy-xym1)   
+    bx <- b*(xym1-xy)   
     sbx <- sbx + bx
     
     xy <- mean(as.numeric(y$dum_signed)-1)
     xym1 <- mean(as.numeric(ym1$dum_signed)-1)   
     b <- summary(model_100)$coefficients[grepl("dum_signed", rownames(summary(model_100)$coefficients)),1]
-    bx <- b*(xy-xym1)   
+    bx <- b*(xym1-xy)   
     sbx <- sbx + bx
     
     xy <- mean(as.numeric(y$dum_dated)-1)
     xym1 <- mean(as.numeric(ym1$dum_dated)-1)   
     b <- summary(model_100)$coefficients[grepl("dum_dated", rownames(summary(model_100)$coefficients)),1]
-    bx <- b*(xy-xym1)   
+    bx <- b*(xym1-xy)   
     sbx <- sbx + bx
     
-    auc_house <- c("Ashbeys","Bernardi","Bonhams","Russell Kaplan","Stephan Welz & Co","Strauss & Co","Christies")  
+    auc_house <- c("Ashbeys","Bernardi","Bonhams","Russell Kaplan","Stephan Welz","Strauss","Christies")  
     for(j in auc_house) {
         xy <- mean(as.numeric(y$ah_code==j))
         xym1 <- mean(as.numeric(ym1$ah_code==j))  
         b <- summary(model_100)$coefficients[grepl(j, rownames(summary(model_100)$coefficients)),1]
-        bx <- b*(xy-xym1)   
+        bx <- b*(xym1-xy)   
         sbx <- sbx + bx
     }
     
-    medium <- c("Watercolour","Oil","Acrylic","Print/Woodcut","Mixed Media","Sculpture","Photograhy","Other")  
+    medium <- c("Watercolour","Oil","Acrylic","Print/Woodcut","Mixed Media","Sculpture","Photography","Other")  
     for(k in medium) {
         xy <- mean(as.numeric(y$med_code==k))
         xym1 <- mean(as.numeric(ym1$med_code==k))   
         b <- summary(model_100)$coefficients[grepl(k, rownames(summary(model_100)$coefficients)),1]
-        bx <- b*(xy-xym1)   
+        bx <- b*(xym1-xy)   
         sbx <- sbx + bx
     }
     
-    rep[i] <- (py/pym1)/exp(sbx)
+    rep[i] <- (pym1/py)/exp(sbx)
 }
 
 #reputation <- as.matrix(rep)
@@ -892,36 +938,45 @@ g
 #In this regression nearly the full sample is used, leading to a better representation of 
 #the total art market.
 
-list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
+list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
                     "nr_works","lnrep","timedummy")
-modeldata <- subset(artdata, rank_all<max(rank_all))
+#modeldata <- subset(artdata, rank_all<max(rank_all))
 
 source("full_model.R")
-rep_results <- full_model(modeldata,list_expl_vars)
+rep_results <- full_model(artdata,list_expl_vars)
 
 source("overlap1y_model.R")
-rep_overlap1 <- overlap1y_model(modeldata,list_expl_vars)
+rep_overlap1 <- overlap1y_model(artdata,list_expl_vars)
 
 source("overlap2y_model.R")
-rep_overlap2 <- overlap2y_model(modeldata,list_expl_vars)
+rep_overlap2 <- overlap2y_model(artdata,list_expl_vars)
+
+source("rolling_model.R")
+rep_rolling <- rolling_model(artdata,list_expl_vars)
 
 ## Maar regression wys 'n neagtive coefficient ?????
 ## Los dalk die artists uit wat net een paiting verkoop het !!!!
 
 index_plot <- rolling[,c(1,2)]
-index_plot <- cbind(index_plot,Index_Adjacent=overlap[,19])
-index_plot <- cbind(index_plot,Index_Adj2=overlap2[,11])
+#index_plot <- rolling[,c(1,2,15)]
+#index_plot <- cbind(index_plot,Index_Adjacent=overlap[,19])
+#index_plot <- cbind(index_plot,Index_Adj2=overlap2[,11])
 index_plot <- cbind(index_plot,RepIndex_Full=rep_results[,2])
 index_plot <- cbind(index_plot,RepOverlap_1y=rep_overlap1[,19])
 index_plot <- cbind(index_plot,RepOverlap_2y=rep_overlap2[,11])
+index_plot <- cbind(index_plot,RepRolling=rep_rolling[,15])
 index_plot <- melt(index_plot, id="Date")  # convert to long format
+
+png(file = "Reputation.png", width=600,height=360)
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 3) 
 g <- g + geom_line()
 g <- g + ylab("Index")
 g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
 g
+dev.off()
 
 
 
@@ -930,8 +985,35 @@ g
 ## QUANTILE REGRESSION ##
 ##=====================##
 
-#qreg
+list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
+                    "nr_works","lnrep","timedummy")
+expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
 
+quant <- rq(expl_vars, tau=c(0.25,0.5,0.75), data=artdata)
+quant_results <- coef(quant)[grepl("time", rownames(coef(quant))),1:3]
+quant_results <- as.data.frame(quant_results)
+quant_results <- exp(quant_results)*100
+
+index_plot <- rolling[,c(1,2)]
+index_plot <- cbind(index_plot,quant_results)
+index_plot <- index_plot[,-2]
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+
+png(file = "Quantile.png", width=600,height=360)
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
+g
+dev.off()
+
+#quant.all <- rq(expl_vars,data=artdata,tau=seq(0.05,0.95,0.05))
+#par(mar=c(0.1,0.1,0.1,0.1))
+#quant.plot <- summary(quant.all)
+#plot(quant.plot)
 
 ##======================##
 ## MATCHING METHODOLOGY ##
@@ -958,3 +1040,9 @@ g
 # Try themes and materials with grepl
 
 
+list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
+                    "nr_works","lnrep","timedummy")
+expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
+modeldata <- subset(artdata, artdata$rank_all<101)
+model_100 <- lm(expl_vars, data=modeldata)
+summary(model_100)$coefficients

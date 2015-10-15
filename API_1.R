@@ -13,6 +13,7 @@ library(reshape2)
 library(stargazer)
 library(micEcon)
 library(quantreg)
+library(McSpatial)
 
 #setwd("C:/Users/Laurie/OneDrive/Documents/BING/METRICS/PhD Proposal Readings/Art Price Index")
 setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art Price Index\\R Code")
@@ -126,7 +127,10 @@ for(i in 1:8) {
 
 artdata <- merge(artdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
 
-
+## Rank total
+rankings <- count(artdata, artist)
+rankings$rank_total <- row_number(desc(rankings$n))
+artdata <- merge(artdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
 
 ##======================##
 ## EXPLORATORY ANALYSIS ##
@@ -846,10 +850,6 @@ model_100 <- lm(expl_vars, data=modeldata)
 rep <- list()
 rep[[1]] <- 1
 
-rankings <- count(artdata, artist)
-rankings$rank_total <- row_number(desc(rankings$n))
-artdata <- merge(artdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
-
 for(i in 2:(max(artdata$rank_total))) {
     ##maak dit 'n function waaroor jy sapply?????
     list_vars <- c(list_expl_vars,"price")
@@ -1024,39 +1024,196 @@ g
 #check for duplicates (how many)
 sum(duplicated(artdata[,c("artist","title","med_code","area","dum_signed","dum_dated")]))
 
+#The distance metric between any two sales (across the intervening time period) is the 
+#absolute value of the difference between the two predicted hedonic log values. 
+#The threshold for this distance metric can be customised. 
+#At one extreme, one can choose to select only one pair with the smallest value of the distance metric. 
 
 #match per artist by hedonic function
 list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
                     "nr_works","timedummy")
 expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
 
-modeldata <- subset(artdata, artdata$rank_total==1)
-model <- lm(expl_vars, data=modeldata, na.action = na.exclude)
 
-#calculate predicted value for each painting (excluding time dummies)
-newdata <- modeldata
-newdata$timedummy <- "2000 Q1"
-modeldata <- cbind(modeldata,fitted=predict.lm(model,newdata))
+teller <-0
+fullrep <- data.frame()
+fullrep1<- data.frame()
+fullrep2 <- data.frame()
+fullrep3<- data.frame()
+fullrep4 <- data.frame()
+fullrep5<- data.frame()
+fullrep6 <- data.frame()
+fullrep7<- data.frame()
+rartdata <- subset(artdata,artdata$rank_all<max(artdata$rank_all,na.rm=TRUE))
+keep <- c("lnprice","artist","lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
+          "nr_works","timedummy","counter")
+rartdata <- rartdata[,names(rartdata) %in% keep]
+rartdata <- rartdata[complete.cases(rartdata),]    
+## Rank total again for new sample
+rankings <- count(rartdata, artist)
+rankings$rank_total <- row_number(desc(rankings$n))
+rartdata <- merge(rartdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
+    
+for(k in 1:max(rartdata$rank_total)) {
+    modeldata <- subset(rartdata, rartdata$rank_total==k)
+    modeldata$med_code <- factor(modeldata$med_code)
+    modeldata$ah_code <- factor(modeldata$ah_code)
+    modeldata$dum_signed <- factor(modeldata$dum_signed)
+    modeldata$dum_dated <- factor(modeldata$dum_dated)
+    modeldata$timedummy <- factor(modeldata$timedummy)
+    
+    #modeldata <- cbind(modeldata,model.matrix(~modeldata$med_code))
+    if(length(levels(modeldata$med_code))==1) { modeldata$med_code <- as.numeric(0) }
+    if(length(levels(modeldata$ah_code))==1) {  modeldata$ah_code <- as.numeric(0) }
+    if(length(levels(modeldata$dum_signed))==1) { modeldata$dum_signed <- as.numeric(0) }
+    if(length(levels(modeldata$dum_dated))==1) { modeldata$dum_dated <- as.numeric(0)   }
+    
+    if(length(levels(modeldata$timedummy))!=1) { #modeldata$timedummy <- as.numeric(0)   
+    
+        model <- lm(expl_vars, data=modeldata, na.action = na.exclude)
+    
+    #calculate predicted value for each painting (excluding time dummies)
+    #newdata <- modeldata
+    #newdata$timedummy <- modeldata$timedummy[1]
+        modeldata$timedummy <- modeldata$timedummy[1]
+    
+    #pr <- which(!(newdata$med_code %in% levels(modeldata$med_code)))
+    #newdata$med_code[pr] <- NA
+    
+    #modeldata <- cbind(modeldata,fitted=predict.lm(model,newdata))
+    #fitted<-as.data.frame(predict.lm(model,newdata,type="terms",na.action = na.exclude,
+    #        terms = c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated","nr_works")))
+    
+        modeldata <- cbind(modeldata,fitted=predict.lm(model))
+    
+    #modeldata$fitted <- rowSums(fitted)            
+    #modeldata <- modeldata[!is.na(modeldata$fitted),]
 
-#The distance metric between any two sales (across the intervening time period) is the 
-#absolute value of the difference between the two predicted hedonic log values. 
+    
+        
+#try id manually:
+    modeldata$id <- 0
+    for(i in 1:nrow(modeldata)) {
+        teller <- teller + 1
+        if(modeldata$id[i]==0) {
+            modeldata$id[i] <- teller
+            modeldata$distance <- abs(modeldata$fitted[i]-modeldata$fitted)
+            modeldata$id[(modeldata$distance==min(modeldata[modeldata[,"id"]==0
+                                                        ,"distance"],na.rm=TRUE))] <- teller
+        } 
+    }
 
-#The threshold for this distance metric can be customised. 
-#At one extreme, one can choose to select only one pair with the smallest value of the distance metric. 
+    repdata <- repsaledata(modeldata$lnprice,modeldata$counter,modeldata$id)
+    fullrep <- rbind(fullrep,repdata)
+    repdata1 <- repsaledata(modeldata$lnarea,modeldata$counter,modeldata$id)
+    fullrep1 <- rbind(fullrep1,repdata1)
+    repdata2 <- repsaledata(modeldata$med_code,modeldata$counter,modeldata$id)
+    fullrep2 <- rbind(fullrep2,repdata2)
+    repdata3 <- repsaledata(modeldata$ah_code,modeldata$counter,modeldata$id)
+    fullrep3 <- rbind(fullrep3,repdata3)
+    repdata4 <- repsaledata(modeldata$lnsculpt_area,modeldata$counter,modeldata$id)
+    fullrep4 <- rbind(fullrep4,repdata4)
+    repdata5 <- repsaledata(modeldata$dum_signed,modeldata$counter,modeldata$id)
+    fullrep5 <- rbind(fullrep5,repdata5)
+    repdata6 <- repsaledata(modeldata$dum_dated,modeldata$counter,modeldata$id)
+    fullrep6 <- rbind(fullrep6,repdata6)
+    repdata7 <- repsaledata(modeldata$nr_works,modeldata$counter,modeldata$id)
+    fullrep7 <- rbind(fullrep7,repdata7)
+    }
+}
+
+fullrep <- cbind(fullrep,fullrep1[,4:5])
+fullrep <- cbind(fullrep,fullrep2[,4:5])
+fullrep <- cbind(fullrep,fullrep3[,4:5])
+fullrep <- cbind(fullrep,fullrep4[,4:5])
+fullrep <- cbind(fullrep,fullrep5[,4:5])
+fullrep <- cbind(fullrep,fullrep6[,4:5])
+fullrep <- cbind(fullrep,fullrep7[,4:5])
+
+colnames(fullrep) <- c("id","time0","time1","price0","price1","area0","area1","med_code0","med_code1",
+                    "ah_code0","ah_code1","sculpt0","sculpt1","sign0","sign1","date0","date1",
+                    "nr0","nr1")
+
+
+repeatsales <- repsale(fullrep$price0,fullrep$time0,fullrep$price1,fullrep$time1,mergefirst=1,
+         graph=TRUE,graph.conf=TRUE,conf=.95, stage3="abs")
+repeatsales_index <- exp(as.data.frame(repeatsales$pindex))*100
+
+
+dy <- fullrep$price1 - fullrep$price0
+timevar <- levels(factor(c(fullrep$time0, fullrep$time1)))
+nt = length(timevar)
+n = length(dy)
+xmat <- array(0, dim = c(n, nt - 1))
+for (j in seq(1 + 1, nt)) {
+    xmat[, j - 1] <- ifelse(fullrep$time1 == timevar[j], 1, xmat[, j - 1])
+    xmat[, j - 1] <- ifelse(fullrep$time0 == timevar[j],-1, xmat[, j - 1])
+}
+colnames(xmat) <- paste("Time", seq(1 + 1, nt))
+fit <- lm(dy ~ xmat + 0)
+
+fullrep$med_code0[is.na(fullrep$med_code0)] <- "Oil"
+fullrep$med_code1[is.na(fullrep$med_code1)] <- "Oil"
+fullrep$ah_code0[is.na(fullrep$ah_code0)] <- "Strauss"
+fullrep$ah_code1[is.na(fullrep$ah_code1)] <- "Strauss"
+
+darea <- fullrep$area1 - fullrep$area0
+
+med0 <- model.matrix(~fullrep$med_code0)
+med1 <- model.matrix(~fullrep$med_code1)
+dmed <- med1 - med0
+
+ah0 <- model.matrix(~fullrep$ah_code0)
+ah1 <- model.matrix(~fullrep$ah_code1)
+dah <- ah1 - ah0
+
+dsculpt <- fullrep$sculpt1 - fullrep$sculpt0
+dnr <- fullrep$nr1 - fullrep$nr0
+
+sign0 <- model.matrix(~fullrep$sign0)
+sign1 <- model.matrix(~fullrep$sign1)
+dsign <- sign1 - sign0
+
+date0 <- model.matrix(~fullrep$date0)
+date1 <- model.matrix(~fullrep$date1)
+ddate <- date1 - date0
+
+ps.RS <- lm(dy ~ darea + dmed + dah + dsculpt + dnr + dsign + ddate + xmat + 0)
+ps.RS_results <- summary(ps.RS)$coefficients[grepl("Time", rownames(summary(ps.RS)$coefficients)),1]
+ps.RS_results <- as.data.frame(ps.RS_results)
+ps.RS_results$index_all <- exp(ps.RS_results$ps.RS_results)*100
+
+
+
 #Alternatively, one can set a specified threshold, with all the pairs ranking from the smallest to the largest 
 #distance values, and then select the lowest x% of the pairs with their distance metric smaller than a certain value. 
 #Pseudo pairs are generated by matching each transaction with its most adjacent subsequent transaction. 
 
-distance <- abs(modeldata$fitted[1]-modelfitted[2])
+#if predicted value < distance metric & timedummy = following quarter 
+#=> gee dieselfde id number
 
-#if predicted value < distance metric & timedummy = following quarter => gee dieselfde id number
 
 
-for(i in 1:max(artdata$rank_total)) {
-    modeldata <- subset(artdata, artdata$rank_total=i)
-    model_100 <- lm(expl_vars, data=modeldata)
-    
+
+
+
+#try with matchit:
+
+rescale <- function (x, nx1, nx2, minx, maxx) { 
+    nx = nx1 + (nx2 - nx1) * (x - minx)/(maxx - minx)
+    return(nx)
 }
+modeldata$ny <- rescale(modeldata$fitted,0,1,min(modeldata$fitted),max(modeldata$fitted)) 
+
+list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
+                    "nr_works","timedummy")
+form <- as.formula(paste("ny~",paste(list_expl_vars,collapse="+")))
+modeldata <- modeldata[,c(-13,-21,-22)]
+modeldata <- modeldata[complete.cases(modeldata),]
+
+m.out <- matchit(expl_vars, method="nearest",
+                 data=modeldata)  #propensity score matching
+
 
 #----------------------------------
 #MatchIt function (see source code)
@@ -1100,13 +1257,13 @@ t.test(m.data1$re78[m.data1$treat==1],  # perform paired t-tests on matched data
 #---------------------------------------
 #McMillen repeat sales (see source code)
 #---------------------------------------
-library(McSpatial)
+
 
 #Identifies repeat sales from a data set with observations on sale price, time of sale, and a property
 #id. Returns a data frame in which each observation is a repeat sales pair.
 repsaledata(price,timevar,id)
 
-# If some of the original hedonic data set variables need to be included in the 
+#If some of the original hedonic data set variables need to be included in the 
 #repeat sales data set, the original hedonic data set and the
 #repsaledata data frame can be merged by the id variable.
 

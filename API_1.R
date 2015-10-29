@@ -33,7 +33,6 @@ artdata <- read.csv("Auction database.csv", header=TRUE, sep=";",na.strings = ""
 ## CLEANING THE DATA ##
 ##===================##
 
-
 artdata$date <- as.Date(artdata$date)
 artdata$med_code <- factor(artdata$med_code, labels=c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut",
                                                       "Mixed Media","Sculpture","Photography", "Other"))

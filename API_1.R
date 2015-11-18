@@ -290,6 +290,14 @@ time_results$index_all <- exp(time_results$time_results)*100
 
 #stargazer(model_all, omit=c("artist","timedummy"))
 
+#---------------------------------
+#Bias correction
+corr.time_results <- summary(model_all)$coefficients[grepl("time", rownames(summary(model_all)$coefficients)),1:2]
+corr.time_results <- as.data.frame(corr.time_results)
+corr.time_results$index_all <- exp(corr.time_results$Estimate)*100
+corr.time_results$corr.index_all <- exp(corr.time_results$Estimate)*exp(0.5*corr.time_results[,"Std. Error"])*100
+
+
 #----------------------
 #ROLLING 5-YEAR WINDOWS
 #----------------------
@@ -1092,6 +1100,13 @@ for(k in 1:max(rartdata$rank_total)) {
         #fitted<-as.data.frame(predict.lm(model,newdata,type="terms",na.action = na.exclude,
         #        terms = c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated","nr_works")))
         modeldata <- cbind(modeldata,fitted=predict.lm(model))
+        
+#DO THIS MANUALLY? E.G.:
+        #new.t <- seq(2006, len = 2 * 12, by = 1/12)
+        #alpha <- coef(temp.lm)[1]
+        #beta <- rep(coef(temp.lm)[2:13], 2)
+        #(alpha * new.t + beta)[1:4]
+        
         #modeldata$fitted <- rowSums(fitted)            
         #modeldata <- modeldata[!is.na(modeldata$fitted),]
 
@@ -1507,3 +1522,22 @@ expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
 modeldata <- subset(artdata, artdata$rank_all<101)
 model_100 <- lm(expl_vars, data=modeldata)
 summary(model_100)$coefficients
+
+
+
+##============##
+## EVALUATION ##
+##============##
+
+# Check overlap interme van confidence intervals
+# Check consistency in terms van turning points
+# Check growth rates en standand deviations
+# Check volatility en AC(1)
+# Check in-sample en out-of-sample
+
+
+#==============================#
+# Bubbles: Explosive Behaviour
+#==============================#
+
+# Check explosivity of time series

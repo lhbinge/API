@@ -14,8 +14,6 @@ library(stargazer)
 library(micEcon)
 library(quantreg)
 library(McSpatial)
-library(quantmod)
-
 
 #setwd("C:/Users/Laurie/OneDrive/Documents/BING/METRICS/PhD Proposal Readings/Art Price Index")
 setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art Price Index\\R Code")
@@ -285,7 +283,6 @@ expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
 #time_results <- full_model(artdata)
 
 modeldata <- subset(artdata, artdata$rank_all<max(artdata$rank_all,na.rm=TRUE))
-#modeldata <- subset(artdata, artdata$rank_all<101)
 model_all <- lm(expl_vars, data=modeldata)
 time_results <- summary(model_all)$coefficients[grepl("time", rownames(summary(model_all)$coefficients)),1]
 time_results <- as.data.frame(time_results)
@@ -515,7 +512,7 @@ g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g
 
-#png(file = "Adjacent Period.png", width=600,height=360)
+png(file = "Adjacent Period.png", width=600,height=360)
 index_plot <- rolling[,c(1,2,15)]
 index_plot <- cbind(index_plot,Adjacent_1year=overlap[,19])
 index_plot <- cbind(index_plot,Adjacent_2year=overlap2[,11])
@@ -528,7 +525,7 @@ g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
 g
-#dev.off()
+dev.off()
 
 #----------------------------------
 # STRATIFIED REGRESSION RESULTS
@@ -980,7 +977,7 @@ index_plot <- cbind(index_plot,RepOverlap_2y=rep_overlap2[,11])
 index_plot <- cbind(index_plot,RepRolling=rep_rolling[,15])
 index_plot <- melt(index_plot, id="Date")  # convert to long format
 
-#png(file = "Reputation.png", width=600,height=360)
+png(file = "Reputation.png", width=600,height=360)
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 3) 
 g <- g + geom_line()
@@ -989,7 +986,7 @@ g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
 g
-#dev.off()
+dev.off()
 
 
 
@@ -1040,11 +1037,11 @@ allDup <- function (value)
 }
 rsartdata <- artdata[allDup(artdata[,c("artist","title","med_code","area","dum_signed","dum_dated")]),]
 #rsartdata <- transform(rsartdata,id=as.numeric(factor(title)))
-rsartdata <- transform(rsartdata, id = as.numeric(interaction(artist,factor(title),med_code,factor(area),factor(dum_signed),
-                                                              factor(dum_dated), drop=TRUE)))
+rsartdata <- transform(rsartdata, id = as.numeric(interaction(artist,factor(title),med_code,factor(area),factor(dum_signed),factor(dum_dated)
+                                                              , drop=TRUE)))
 
 repdata <- repsaledata(rsartdata$lnprice,rsartdata$counter,rsartdata$id)
-repeatsales <- repsale(repdata$price0,repdata$time0,repdata$price1,repdata$time1,mergefirst=2,
+repeatsales <- repsale(repdata$price0,repdata$time0,repdata$price1,repdata$time1,mergefirst=3,
                        graph=TRUE,graph.conf=TRUE,conf=.95)
 repeatsales_index <- exp(as.data.frame(repeatsales$pindex))*100
 
@@ -1058,10 +1055,18 @@ list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","
                     "nr_works","timedummy")
 expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
 
+
 teller <-0
-repdata <- data.frame()
+fullrep <- data.frame()
+fullrep1<- data.frame()
+fullrep2 <- data.frame()
+fullrep3<- data.frame()
+fullrep4 <- data.frame()
+fullrep5<- data.frame()
+fullrep6 <- data.frame()
+fullrep7<- data.frame()
 rartdata <- subset(artdata,artdata$rank_all<max(artdata$rank_all,na.rm=TRUE))
-keep <- c("lnprice","artist","title","lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
+keep <- c("lnprice","artist","lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
           "nr_works","timedummy","counter")
 rartdata <- rartdata[,names(rartdata) %in% keep]
 rartdata <- rartdata[complete.cases(rartdata),]  
@@ -1071,7 +1076,7 @@ rankings <- count(rartdata, artist)
 rankings$rank_total <- row_number(desc(rankings$n))
 rartdata <- merge(rartdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
     
-for(k in 1:max(rartdata$rank_total)) { #max(rartdata$rank_total)
+for(k in 1:max(rartdata$rank_total)) {
     modeldata <- subset(rartdata, rartdata$rank_total==k)
     modeldata$med_code <- factor(modeldata$med_code)
     modeldata$ah_code <- factor(modeldata$ah_code)
@@ -1087,39 +1092,71 @@ for(k in 1:max(rartdata$rank_total)) { #max(rartdata$rank_total)
     
     if(length(levels(modeldata$timedummy))!=1) { #modeldata$timedummy <- as.numeric(0)   
         model <- lm(expl_vars, data=modeldata, na.action = na.exclude)
-        newdata <- modeldata
-        newdata$timedummy <- newdata$timedummy[1]
-        modeldata <- cbind(modeldata,fitted=predict.lm(model,newdata=newdata))
+        #calculate predicted value for each painting (excluding time dummies)
+        #newdata <- modeldata
+        #newdata$timedummy <- modeldata$timedummy[1]
+        modeldata$timedummy <- modeldata$timedummy[1]
+        #pr <- which(!(newdata$med_code %in% levels(modeldata$med_code)))
+        #newdata$med_code[pr] <- NA
+        #modeldata <- cbind(modeldata,fitted=predict.lm(model,newdata))
+        #fitted<-as.data.frame(predict.lm(model,newdata,type="terms",na.action = na.exclude,
+        #        terms = c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated","nr_works")))
+        modeldata <- cbind(modeldata,fitted=predict.lm(model))
+        
+#DO THIS MANUALLY? E.G.:
+        #new.t <- seq(2006, len = 2 * 12, by = 1/12)
+        #alpha <- coef(temp.lm)[1]
+        #beta <- rep(coef(temp.lm)[2:13], 2)
+        #(alpha * new.t + beta)[1:4]
+        
+        #modeldata$fitted <- rowSums(fitted)            
+        #modeldata <- modeldata[!is.na(modeldata$fitted),]
 
+#try id manually:
         modeldata$id <- 0
         for(i in 1:nrow(modeldata)) {
             teller <- teller + 1
             if(modeldata$id[i]==0) {
                 modeldata$id[i] <- teller
                 medium <- modeldata$med_code[i]
-                modeldata$distance <- abs(modeldata$fitted[i]-modeldata$fitted)/modeldata$fitted[i]
-                modeldata$id[(modeldata$distance<0.0001 & modeldata[,"id"]==0 & modeldata[,"med_code"]==medium)] <- teller
-                #modeldata$id[(modeldata$distance==min(modeldata[modeldata[,"id"]==0 & modeldata[,"med_code"]==medium ,"distance"],na.rm=TRUE))] <- teller
+                modeldata$distance <- abs(modeldata$fitted[i]-modeldata$fitted)
+                #modeldata$id[(modeldata$distance==min(modeldata[modeldata[,"id"]==0,"distance"],na.rm=TRUE))] <- teller
+                modeldata$id[(modeldata$distance==min(modeldata[modeldata[,"id"]==0 & modeldata[,"med_code"]==medium ,"distance"],na.rm=TRUE))] <- teller
             } 
         }
-        repdata <- rbind(repdata,modeldata)
+
+        repdata <- repsaledata(modeldata$lnprice,modeldata$counter,modeldata$id)
+        fullrep <- rbind(fullrep,repdata)
+        repdata1 <- repsaledata(modeldata$lnarea,modeldata$counter,modeldata$id)
+        fullrep1 <- rbind(fullrep1,repdata1)
+        repdata2 <- repsaledata(modeldata$med_code,modeldata$counter,modeldata$id)
+        fullrep2 <- rbind(fullrep2,repdata2)
+        repdata3 <- repsaledata(modeldata$ah_code,modeldata$counter,modeldata$id)
+        fullrep3 <- rbind(fullrep3,repdata3)
+        repdata4 <- repsaledata(modeldata$lnsculpt_area,modeldata$counter,modeldata$id)
+        fullrep4 <- rbind(fullrep4,repdata4)
+        repdata5 <- repsaledata(modeldata$dum_signed,modeldata$counter,modeldata$id)
+        fullrep5 <- rbind(fullrep5,repdata5)
+        repdata6 <- repsaledata(modeldata$dum_dated,modeldata$counter,modeldata$id)
+        fullrep6 <- rbind(fullrep6,repdata6)
+        repdata7 <- repsaledata(modeldata$nr_works,modeldata$counter,modeldata$id)
+        fullrep7 <- rbind(fullrep7,repdata7)
     }
 }
 
-fullrep <- cbind(repsaledata(repdata$lnprice,repdata$counter,repdata$id),
-                 repsaledata(repdata$lnarea,repdata$counter,repdata$id)[,4:5],
-                 repsaledata(repdata$med_code,repdata$counter,repdata$id)[,4:5],
-                 repsaledata(repdata$ah_code,repdata$counter,repdata$id)[,4:5],
-                 repsaledata(repdata$lnsculpt_area,repdata$counter,repdata$id)[,4:5],
-                 repsaledata(repdata$dum_signed,repdata$counter,repdata$id)[,4:5],
-                 repsaledata(repdata$dum_dated,repdata$counter,repdata$id)[,4:5],
-                 repsaledata(repdata$nr_works,repdata$counter,repdata$id)[,4:5])
+fullrep <- cbind(fullrep,fullrep1[,4:5])
+fullrep <- cbind(fullrep,fullrep2[,4:5])
+fullrep <- cbind(fullrep,fullrep3[,4:5])
+fullrep <- cbind(fullrep,fullrep4[,4:5])
+fullrep <- cbind(fullrep,fullrep5[,4:5])
+fullrep <- cbind(fullrep,fullrep6[,4:5])
+fullrep <- cbind(fullrep,fullrep7[,4:5])
 
 colnames(fullrep) <- c("id","time0","time1","price0","price1","area0","area1","med_code0","med_code1",
                     "ah_code0","ah_code1","sculpt0","sculpt1","sign0","sign1","date0","date1",
                     "nr0","nr1")
 
-repeatsales <- repsale(fullrep$price0,fullrep$time0,fullrep$price1,fullrep$time1,mergefirst=2,
+repeatsales <- repsale(fullrep$price0,fullrep$time0,fullrep$price1,fullrep$time1,mergefirst=3,
          graph=TRUE,graph.conf=TRUE,conf=.95)
 sps.RS_index <- exp(as.data.frame(repeatsales$pindex))*100
 
@@ -1168,43 +1205,39 @@ ps.RS_results <- as.data.frame(ps.RS_results)
 ps.RS_results$index_all <- exp(ps.RS_results$ps.RS_results)*100
 
 
-all_indices <- time_results
-all_indices$Date <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
+
+index_plot <- time_results
+
+index_plot$Date <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
                       "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
                       "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
                       "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
                       "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
                       "2015Q1","2015Q2")
 
-repeatsales_index$Date <- c("2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q4",
-                            "2003Q1","2003Q2","2003Q4","2004Q1","2004Q2","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
-                            "2006Q1","2006Q2","2006Q3","2006Q4","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
-                            "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
-                            "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
-                            "2015Q1","2015Q2")
-
-all_indices <- merge(all_indices, repeatsales_index, by="Date", all=TRUE)
-all_indices <- cbind(all_indices,Simple_ps.RS=sps.RS_index[2:62,1])
-all_indices <- cbind(all_indices,Full_ps.RS=ps.RS_results[,2])
-all_indices <- all_indices[,c(-2)]
-all_indices <- cbind(all_indices,RepIndex_Full=rep_results[,2])
-all_indices <- cbind(all_indices,RepOverlap_1y=rep_overlap1[,19])
-all_indices <- cbind(all_indices,RepOverlap_2y=rep_overlap2[,11])
-all_indices <- cbind(all_indices,RepRolling=rep_rolling[,15])
-
+repeatsales_index$Date <- c("2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
+                       "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+                       "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+                       "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+                       "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                       "2015Q1","2015Q2")
+index_plot <- merge(index_plot, repeatsales_index, by="Date", all=TRUE)
+index_plot <- cbind(index_plot,Simple_ps.RS=sps.RS_index[2:62,1])
+index_plot <- cbind(index_plot,Full_ps.RS=ps.RS_results[2:62,2])
+index_plot <- index_plot[,-2]
 #png(file = "Repeat Sales.png", width=600,height=360)
-index_plot <- melt(all_indices, id="Date")  # convert to long format
+
+index_plot <- melt(index_plot, id="Date")  # convert to long format
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 3) 
 g <- g + geom_line()
 g <- g + ylab("Index")
 g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
-g <- g + theme(legend.title=element_blank()) #theme(legend.position="bottom") +
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
 g
 #dev.off()
 
-#--------Dit is die ou version-----------------------------------------------------------------------------------------
 #Alternatively, one can set a specified threshold, with all the pairs ranking from the smallest to the largest 
 #distance values, and then select the lowest x% of the pairs with their distance metric smaller than a certain value. 
 #Pseudo pairs are generated by matching each transaction with its most adjacent subsequent transaction. 
@@ -1266,15 +1299,6 @@ for(k in 1:max(rartdata$rank_total)) {
         #modeldata$fitted <- rowSums(fitted)            
         #modeldata <- modeldata[!is.na(modeldata$fitted),]
         
-        #DO THIS MANUALLY? E.G.:
-        #new.t <- seq(2006, len = 2 * 12, by = 1/12)
-        #alpha <- coef(temp.lm)[1]
-        #beta <- rep(coef(temp.lm)[2:13], 2)
-        #(alpha * new.t + beta)[1:4]
-        
-        #modeldata$fitted <- rowSums(fitted)            
-        #modeldata <- modeldata[!is.na(modeldata$fitted),]
-        
         #try id manually:
         modeldata$id <- 0
         for(i in 1:nrow(modeldata)) {
@@ -1282,7 +1306,7 @@ for(k in 1:max(rartdata$rank_total)) {
             if(modeldata$id[i]==0) {
                 modeldata$id[i] <- teller
                 medium <- modeldata$med_code[i]
-                modeldata$distance <- abs(modeldata$fitted[i]-modeldata$fitted)/modeldata$fitted[i]
+                modeldata$distance <- abs(modeldata$fitted[i]-modeldata$fitted)
                 modeldata$id[(modeldata$distance<0.1 & modeldata[,"id"]==0 & modeldata[,"med_code"]==medium)] <- teller
             } 
         }
@@ -1390,19 +1414,12 @@ m.out <- matchit(expl_vars, method="nearest",
 #MatchIt function (see source code)
 #----------------------------------
 
-binom <- data.frame(data=runif(1e5),type=sample(0:4,1e5,TRUE))
-for(t in unique(binom$type)) {
-    binom[paste("type",t,sep="")] <- ifelse(binom$type==t,1,0)
-}
-
 library(MatchIt)
 m.out <- matchit(treatment ~ x1+x2+x3+x4+x5+x6, method="nearest",
                  data=data1,ratio=1)  #propensity score matching
 
 m.out <- matchit(treatment ~ x1+x2+x3+x4+x5+x6, method="exact",
                  data=data1,ratio=4)
-
-
 
 #distance: the method used to estimate the distance measure (default = "logit",
 #logistic regression) or a numerical vector of user's own distance measure.
@@ -1514,42 +1531,10 @@ summary(model_100)$coefficients
 ## EVALUATION ##
 ##============##
 
-ts.all_indices <- rbind(c(100,100,100,100,100,100,100,100),all_indices[,-1])
-ts.all_indices <- ts(ts.all_indices,start =c(2000,1),end=c(2015,2),frequency=4 )
-
-# Check correlations
-cor(ts.all_indices, use ="complete.obs")
-
 # Check overlap interme van confidence intervals
 # Check consistency in terms van turning points
-# Check growth rates 
-
-returns <- data.frame()
-for(i in 1:ncol(ts.all_indices)) {
-    returns <- cbind(returns, annualReturn(ts.all_indices[,i], type='arithmetic'))
-}
-colnames(returns) <- colnames(ts.all_indices)
-cor(returns)
-
-dl.indices <- as.data.frame(diff(log(ts.all_indices)))
-cor(dl.indices, use ="complete.obs")
-
-# Check std dev or volatility en AC(1)
-apply(ts.all_indices,MARGIN=2, FUN=sd, na.rm=TRUE)
-
-#????????????????///???/?????????????????????????????
-ac.1 <- function(x) {
-    acf(x,lag.max = 1,plot = FALSE,na.action = na.pass)
-}
-eval <- apply(ts.all_indices, MARGIN=2,FUN=ac.1)
-for(i in 1:ncol(ts.all_indices)) {
-    ac1[i] <- eval$acf[, , i][2,i]
-}    
-ac1 <- as.data.frame(ac1)
-eval <- acf(ts.all_indices,lag.max = 1,plot = FALSE,na.action = na.pass)
-#eval <- cbind(eval,apply(ts.all_indices[,c(-1)],MARGIN=2, FUN=sd, na.rm=TRUE))
-#eval <- cbind(eval,apply(all_indices[,c(-1)],MARGIN=2, FUN=var, na.rm=TRUE))
-
+# Check growth rates en standand deviations
+# Check volatility en AC(1)
 # Check in-sample en out-of-sample
 
 

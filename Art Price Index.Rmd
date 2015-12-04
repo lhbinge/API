@@ -2,18 +2,279 @@
 title: "Art Price Index"
 author: "Bing"
 date: "30 November 2015"
-output: pdf_document
+output: 
+    pdf_document:
+        fig_caption: yes
+        number_sections: true
 ---
 
+#Introduction
+Ons gaan kyk na die art market
 
-```{r, echo=FALSE}
-summary(cars)
+```{r cleaning, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
+##=====================##
+## READING IN THE DATA ##
+##=====================##
+suppressMessages(library(zoo))
+suppressMessages(library(ggplot2))
+suppressMessages(library(plyr))
+suppressMessages(library(dplyr))
+suppressMessages(library(reshape2))
+suppressMessages(library(stargazer))
+suppressMessages(library(micEcon))
+suppressMessages(library(quantreg))
+suppressMessages(library(McSpatial))
+suppressMessages(library(quantmod))
+suppressMessages(library(xtable))
+
+setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art Price Index\\R Code")
+artdata <- read.csv("Auction database.csv", header=TRUE, sep=";",na.strings = "", skipNul = TRUE, 
+                    colClasses=c("character","numeric","numeric","numeric","numeric","factor","factor","factor","character",
+                                 "factor","factor","factor","character","factor","factor","factor","numeric","character",
+                                 "numeric","numeric","numeric","numeric","numeric","numeric"))
+##===================##
+## CLEANING THE DATA ##
+##===================##
+
+artdata$date <- as.Date(artdata$date)
+artdata$med_code <- factor(artdata$med_code, labels=c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut",
+                                                      "Mixed Media","Sculpture","Photography", "Other"))
+artdata$ah_code <- factor(artdata$ah_code, labels=c("5th Avenue","Ashbeys","Bernardi","Bonhams","Russell Kaplan",
+                                                    "Stephan Welz","Strauss","Christies"))
+artdata$timedummy <- factor(as.yearqtr(artdata$date, "%Y-%m-%d"))
+artdata$lnprice <- log(artdata$price)
+artdata$lnarea <- log(artdata$area)
+artdata$lnarea2 <- artdata$lnarea*artdata$lnarea
+artdata$lnsculpt_area <- ifelse(artdata$med_code=="Sculpture", artdata$lnarea, 0)
+artdata$counter <- as.numeric(artdata$timedummy)
+
+##----------------------
+##Rank Artists by Volume
+##----------------------
+#Rank by Total Volume (all)
+rankings <- count(artdata, artist)
+rankings$rank_all <- dense_rank(desc(rankings$n))    #rank by density, with no gaps (ties = equal)
+rankings$rank_total <- row_number(desc(rankings$n))  #equivalent to rank(ties.method = "first")
+rankings$n <- NULL
+
+artdata <- merge(artdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
 ```
 
-You can also embed plots, for example:
+#Lit Review
 
-```{r, echo=FALSE}
-plot(cars)
+## South African literature
+
+
+#The South African Art Auction Data
+Daar was baie groei.
+
+```{r figure1, echo=FALSE, cache = TRUE, fig.height=4, fig.width=7, fig.cap="Turnover (sum of hammer prices) by auction house (2000-2015YTD)"}
+artplot <- aggregate(artdata$hammer_price, by=list(artdata$year,artdata$ah_code), FUN = sum, na.rm=TRUE)
+g <- ggplot(artplot, aes(x=Group.1, y=x,fill=Group.2))
+g <- g + geom_bar(stat="identity")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + scale_fill_discrete(name="Auction House")
+g <- g + ylab("Turnover (Sum of Hammer Price)")
+g <- g + xlab("Date")
+g
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+En die pryse het gestyg.
+
+```{r figure2, echo=FALSE, cache = TRUE, fig.height=4, fig.width=6, fig.cap="Median hammer prices and total sales (lots) at auction (2000-2015YTD)"}
+artplot1 <- aggregate(artdata$hammer_price, by=list(artdata$year), length)
+artplot2 <- aggregate(artdata$hammer_price, by=list(artdata$year), FUN = median, na.rm=TRUE)
+artplot <- merge(artplot1, artplot2, by="Group.1",all.x=TRUE)
+names(artplot) <- c("Date","Total Sales","Median Price")
+artplot <- melt(artplot, id="Date") 
+g <- ggplot(artplot, aes(x=Date,value,colour=variable,fill=variable))
+g <- g + geom_bar(subset=.(variable=="Total Sales"),stat="identity")
+g <- g + geom_line(subset=.(variable=="Median Price"),size=1)
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
+g
+```
+
+Summary van die pryse
+
+```{r table1, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+summaryfunction <- function(x) {
+    if( is.numeric(x)!=TRUE) {stop("Supplied X is not numeric")}
+    mysummary = data.frame("Min." =as.numeric(min(x,na.rm=TRUE)),"1st Qu." = quantile(x,na.rm=TRUE)[2],
+                           "Median" = median(x,na.rm=TRUE),"Mean" = mean(x,na.rm=TRUE),"3rd Qu." = quantile(x,na.rm=TRUE)[4],
+                           "Max." = max(x,na.rm=TRUE),row.names="")
+    names(mysummary) = c("Min.","1st Qu.","Median","Mean","3rd Qu.","Max.")
+    return(mysummary)
+}
+xt <- xtable(summaryfunction(artdata$hammer_price), caption="Descriptive statistics of auction hammer prices")
+print(xt, "latex",comment=FALSE)
+```
+
+
+#Methodologies
+
+##Central Tendency
+
+
+##Hedonic
+
+$$\ln P_{it} =\alpha+\sum_{j=1}^z\beta_jX_{ij}+\sum_{t=1}^\tau\gamma_tD_{it}+\epsilon_{it}$$
+
+
+##Repeat Sales
+
+$$\ln\frac{P_{t+1}}{P_t} =\sum_{i=1}^t\gamma_id_{i}+\epsilon_{i}$$
+
+
+##Hybrid
+
+$$\ln P_{bsj} - \ln P_{arj}=\sum_{k=1}^K\beta_k(X_{bsjk}-X_{arjk})+\sum_{t=0}^\tau\gamma_td_{t}+\epsilon_{srabj}$$
+
+
+#Results
+
+
+```{r hedonicrep, echo=FALSE, cache = TRUE}
+##------------------------------------------##
+##---ARTIST REPUTATION VARIABLE (Kraussl)---##
+##------------------------------------------##
+#First step: Estimate equation 1 on a sub-sample of artists to obtain betaj coefficients
+modeldata <- subset(artdata, artdata$rank_all<101)
+list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
+                    "nr_works","artist","timedummy")
+expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
+model_100 <- lm(expl_vars, data=modeldata)
+
+#Second step: betaj coefficients are plugged into equation for every artist pair (base & another) 
+rep <- list()
+rep[[1]] <- 1
+for(i in 2:(max(artdata$rank_total))) {
+    list_vars <- c(list_expl_vars,"price")
+    
+    #geometric mean of paintings by artist y
+    y <- subset(artdata[,list_vars], artdata$rank_total==1)
+    y <- y[!rowSums(is.na(y)), ]
+    py <-  exp(mean(log(y$price)))  
+    ym1 <- subset(artdata[,list_vars], artdata$rank_total==i)
+    ym1 <- ym1[!rowSums(is.na(ym1)), ]
+    pym1 <-  exp(mean(log(ym1$price)))
+    sbx <- 0
+    
+    #average of characteristics time implicit attribute price
+    xy <- mean(y$lnarea)
+    xym1 <- mean(ym1$lnarea)   
+    b <- summary(model_100)$coefficients[grepl("lnarea", rownames(summary(model_100)$coefficients)),1]
+    bx <- b*(xym1-xy)   
+    sbx <- sbx + bx
+    
+    xy <- mean(y$lnsculpt_area)
+    xym1 <- mean(ym1$lnsculpt_area)   
+    b <- summary(model_100)$coefficients[grepl("lnsculpt_area", rownames(summary(model_100)$coefficients)),1]
+    bx <- b*(xym1-xy)   
+    sbx <- sbx + bx
+    
+    xy <- mean(y$nr_works)
+    xym1 <- mean(ym1$nr_works)   
+    b <- summary(model_100)$coefficients[grepl("nr_works", rownames(summary(model_100)$coefficients)),1]
+    bx <- b*(xym1-xy)   
+    sbx <- sbx + bx
+    
+    xy <- mean(as.numeric(y$dum_signed)-1)
+    xym1 <- mean(as.numeric(ym1$dum_signed)-1)   
+    b <- summary(model_100)$coefficients[grepl("dum_signed", rownames(summary(model_100)$coefficients)),1]
+    bx <- b*(xym1-xy)   
+    sbx <- sbx + bx
+    
+    xy <- mean(as.numeric(y$dum_dated)-1)
+    xym1 <- mean(as.numeric(ym1$dum_dated)-1)   
+    b <- summary(model_100)$coefficients[grepl("dum_dated", rownames(summary(model_100)$coefficients)),1]
+    bx <- b*(xym1-xy)   
+    sbx <- sbx + bx
+    
+    auc_house <- c("Ashbeys","Bernardi","Bonhams","Russell Kaplan","Stephan Welz","Strauss","Christies")  
+    for(j in auc_house) {
+        xy <- mean(as.numeric(y$ah_code==j))
+        xym1 <- mean(as.numeric(ym1$ah_code==j))  
+        b <- summary(model_100)$coefficients[grepl(j, rownames(summary(model_100)$coefficients)),1]
+        bx <- b*(xym1-xy)   
+        sbx <- sbx + bx
+    }
+    
+    medium <- c("Watercolour","Oil","Acrylic","Print/Woodcut","Mixed Media","Sculpture","Photography","Other")  
+    for(k in medium) {
+        xy <- mean(as.numeric(y$med_code==k))
+        xym1 <- mean(as.numeric(ym1$med_code==k))   
+        b <- summary(model_100)$coefficients[grepl(k, rownames(summary(model_100)$coefficients)),1]
+        bx <- b*(xym1-xy)   
+        sbx <- sbx + bx
+    }
+    rep[i] <- (pym1/py)/exp(sbx)
+}
+
+for(i in 1:(max(artdata$rank_total))) { 
+    artdata$reputation[(artdata$rank_total==i)] <- rep[i]
+}
+
+artdata$reputation <- as.numeric(unlist(artdata$reputation))
+artdata$lnrep <- log(artdata$reputation)
+
+#The result: index of average price per artist adjusted for quality, relative to the base artist 
+#It can replace the artist dummies as a continuous variable in a second regression of equation 1 
+list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
+                    "nr_works","lnrep","timedummy")
+source("full_model.R")
+rep_results <- full_model(artdata,list_expl_vars)
+
+source("overlap1y_model.R")
+rep_overlap1 <- overlap1y_model(artdata,list_expl_vars)
+
+source("overlap2y_model.R")
+rep_overlap2 <- overlap2y_model(artdata,list_expl_vars)
+
+source("rolling_model.R")
+rep_rolling <- rolling_model(artdata,list_expl_vars)
+
+rep_indices <- rep_rolling[,c(1,2)]
+colnames(rep_indices) <- c("Date","Rep_Full")
+rep_indices <- cbind(rep_indices,RepAdjacent_1y=rep_overlap1[,19])
+rep_indices <- cbind(rep_indices,RepAdjacent_2y=rep_overlap2[,11])
+rep_indices <- cbind(rep_indices,RepRolling=rep_rolling[,15])
+index_plot <- melt(rep_indices, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
+g
+```
+
+
+There are only 
+```{r, echo=FALSE} 
+###nrow()
+```
+
+```{r repeatsales, echo=FALSE, cache = TRUE}
+
+allDup <- function(value) {
+    duplicated(value) | duplicated(value, fromLast = TRUE)
+}
+rsartdata <- artdata[allDup(artdata[,c("artist","title","med_code","area","dum_signed","dum_dated")]),]
+rsartdata <- transform(rsartdata, id = as.numeric(interaction(artist,factor(title),med_code,factor(area),factor(dum_signed),
+                                                              factor(dum_dated), drop=TRUE)))
+
+repdata <- repsaledata(rsartdata$lnprice,rsartdata$counter,rsartdata$id)
+repeatsales <- repsale(repdata$price0,repdata$time0,repdata$price1,repdata$time1,mergefirst=2,
+                       graph=TRUE,graph.conf=TRUE,conf=.95)
+repeatsales_index <- exp(as.data.frame(repeatsales$pindex))*100
+```
+
+
+
+
+
+
+
+
+

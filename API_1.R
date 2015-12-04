@@ -447,7 +447,10 @@ g
 
 list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
                     "nr_works","lnrep","timedummy")
-#modeldata <- subset(artdata, rank_all<max(rank_all))
+modeldata <- artdata
+expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
+model_all <- lm(expl_vars, data=modeldata)
+stargazer(model_100, omit=c("timedummy","artist"),omit.labels = "Quarterly dummies",type = "text")
 
 source("full_model.R")
 rep_results <- full_model(artdata,list_expl_vars)
@@ -461,14 +464,14 @@ rep_overlap2 <- overlap2y_model(artdata,list_expl_vars)
 source("rolling_model.R")
 rep_rolling <- rolling_model(artdata,list_expl_vars)
 
-rep_indices <- rep_rolling[,c(1,2)]
-colnames(rep_indices) <- c("Date","Rep_Full")
-rep_indices <- cbind(rep_indices,RepAdjacent_1y=rep_overlap1[,19])
-rep_indices <- cbind(rep_indices,RepAdjacent_2y=rep_overlap2[,11])
-rep_indices <- cbind(rep_indices,RepRolling=rep_rolling[,15])
+hedonic_indices <- rep_rolling[,c(1,2)]
+colnames(hedonic_indices) <- c("Date","Rep_Full")
+hedonic_indices <- cbind(hedonic_indices,RepAdjacent_1y=rep_overlap1[,19])
+hedonic_indices <- cbind(hedonic_indices,RepAdjacent_2y=rep_overlap2[,11])
+hedonic_indices <- cbind(hedonic_indices,RepRolling=rep_rolling[,15])
 
 #png(file = "Reputation.png", width=600,height=360)
-index_plot <- melt(rep_indices, id="Date")  # convert to long format
+index_plot <- melt(hedonic_indices, id="Date")  # convert to long format
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 3) 
 g <- g + geom_line()
@@ -970,18 +973,22 @@ ps.RS <- function(threshold) {
     ps.RS_results <- summary(ps.RS)$coefficients[grepl("Time", rownames(summary(ps.RS)$coefficients)),1]
     ps.RS_results <- as.data.frame(ps.RS_results)
     ps.RS_results$index_all <- exp(ps.RS_results$ps.RS_results)*100
-
-    return(sps.RS_index,ps.RS_results)
+    if(threshold=="nearest"){
+        ps.RS_results <- cbind(ps.RS_results,sps.RS_index[c(3:62),])
+    } else {
+        ps.RS_results <- cbind(ps.RS_results,sps.RS_index[2:62,])
+    } 
+    ps.RS_results$pairs <- nrow(fullrep)
+    
+    return(ps.RS_results)
 }
 
-
-ps.RS_1 <- ps.RS(0.0001)
-ps.RS_2 <- ps.RS(0.00005)
+ps.RS_1 <- ps.RS(0.001)
+ps.RS_2 <- ps.RS(0.0001)
 ps.RS_n <- ps.RS("nearest")
 
-
-all_indices <- rep_results #time_results
-all_indices$Date <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
+rep_indices <- ps.RS_1[,c(2,3)] #time_results
+rep_indices$Date <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
                       "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
                       "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
                       "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
@@ -994,31 +1001,34 @@ repeatsales_index$Date <- c("2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1
                             "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
                             "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
                             "2015Q1","2015Q2")
+rep_indices <- merge(rep_indices, repeatsales_index, by="Date", all=TRUE)
 
-all_indices <- merge(all_indices, repeatsales_index, by="Date", all=TRUE)
-all_indices <- cbind(all_indices,Simple_ps.RS1=sps.RS_index[1][2:62,1])
-all_indices <- cbind(all_indices,Full_ps.RS1=ps.RS_results[1][,2])
-all_indices <- cbind(all_indices,Simple_ps.RS2=sps.RS_index[2][2:62,1])
-all_indices <- cbind(all_indices,Full_ps.RS2=ps.RS_results[2][,2])
-all_indices <- cbind(all_indices,Simple_ps.RS3=sps.RS_index[3][2:62,1])
-all_indices <- cbind(all_indices,Full_ps.RS3=ps.RS_results[3][,2])
-all_indices <- all_indices[,c(-2)]
-#all_indices <- cbind(all_indices,RepIndex_Full=rep_results[,2])
-all_indices <- cbind(all_indices,RepOverlap_1y=rep_overlap1[,19])
-all_indices <- cbind(all_indices,RepOverlap_2y=rep_overlap2[,11])
-all_indices <- cbind(all_indices,RepRolling=rep_rolling[,15])
+rep_indices <- cbind(rep_indices,Full_ps.RS2=ps.RS_2[,2])
+
+ps.RS_n$Date <- c("2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
+                  "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+                  "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+                  "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+                  "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                  "2015Q1","2015Q2")
+rep_indices <- merge(rep_indices, ps.RS_n, by="Date", all=TRUE)
+
+rep_indices <- rep_indices[,c(1,4,7,2,5)]
+colnames(rep_indices) <- c("Date","Repeat Sales","ps.RS(nearest)","ps.RS(0.1%)","ps.RS(0.01%)")    
 
 #png(file = "Repeat Sales.png", width=600,height=360)
-index_plot <- melt(all_indices, id="Date")  # convert to long format
+index_plot <- melt(rep_indices, id="Date")  # convert to long format
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 3) 
 g <- g + geom_line()
 g <- g + ylab("Index")
 g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
-g <- g + theme(legend.title=element_blank()) #theme(legend.position="bottom") +
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
 g
 #dev.off()
+
+
 
 #--------Dit is die ou version-----------------------------------------------------------------------------------------
 #Alternatively, one can set a specified threshold, with all the pairs ranking from the smallest to the largest 
@@ -1330,43 +1340,52 @@ summary(model_100)$coefficients
 ## EVALUATION ##
 ##============##
 
-ts.all_indices <- rbind(c(100,100,100,100,100,100,100,100),all_indices[,-1])
-ts.all_indices <- ts(ts.all_indices,start =c(2000,1),end=c(2015,2),frequency=4 )
+all_indices <- cbind(hedonic_indices,rep_indices[,-1])
+#all_indices <- cbind(all_indices,dum_indices)
+all_indices <- rbind(c("2000Q1",seq(100,100, length.out = ncol(rep_indices))),all_indices)
+for(i in 2:ncol(all_indices)) {all_indices[,i] <- as.numeric(all_indices[,i]) }
+ts.all_indices <- as.ts(all_indices[,-1],start =c(2000,1),end=c(2015,2),frequency=4 ) 
 
-# Check correlations
-cor(ts.all_indices, use ="complete.obs")
-
-# Check overlap interme van confidence intervals
-# Check consistency in terms van turning points
-# Check growth rates 
-
-returns <- data.frame()
-for(i in 1:ncol(ts.all_indices)) {
-    returns <- cbind(returns, annualReturn(ts.all_indices[,i], type='arithmetic'))
-}
-colnames(returns) <- colnames(ts.all_indices)
-cor(returns)
-
+# Check correlations (in levels and growth rates)
+cor(ts.all_indices, use ="complete.obs") 
 dl.indices <- as.data.frame(diff(log(ts.all_indices)))
 cor(dl.indices, use ="complete.obs")
 
-# Check std dev or volatility en AC(1)
-apply(ts.all_indices,MARGIN=2, FUN=sd, na.rm=TRUE)
-
-#????????????????///???/?????????????????????????????
-ac.1 <- function(x) {
-    acf(x,lag.max = 1,plot = FALSE,na.action = na.pass)
-}
-eval <- apply(ts.all_indices, MARGIN=2,FUN=ac.1)
+# Check annual growth rates 
+areturns <- data.frame()
 for(i in 1:ncol(ts.all_indices)) {
-    ac1[i] <- eval$acf[, , i][2,i]
-}    
-ac1 <- as.data.frame(ac1)
-eval <- acf(ts.all_indices,lag.max = 1,plot = FALSE,na.action = na.pass)
-#eval <- cbind(eval,apply(ts.all_indices[,c(-1)],MARGIN=2, FUN=sd, na.rm=TRUE))
-#eval <- cbind(eval,apply(all_indices[,c(-1)],MARGIN=2, FUN=var, na.rm=TRUE))
+    areturns <- cbind(returns, annualReturn(ts.all_indices[,i], type='log'))
+}
+colnames(areturns) <- colnames(ts.all_indices)
+cor(areturns)
 
-# Check in-sample en out-of-sample
+# Check std dev or volatility en AC(1)
+ac.1<-numeric()
+eval <- data.frame()
+
+vol <- apply(ts.all_indices,MARGIN=2, FUN=sd, na.rm=TRUE)
+for(i in 1:ncol(ts.all_indices)) {
+    ac.1[i] <- acf(ts.all_indices,na.action = na.pass, plot = FALSE, lag.max = 1)$acf[,,i][2,i]
+}
+eval <- cbind(vol=vol,ac.1=ac.1)
+
+# Check consistency in terms van turning points
+peak.date<- character()
+for(i in 2:ncol(all_indices)) {
+    peak <- all_indices[all_indices[,i]==max(all_indices[,i],na.rm = TRUE),1]
+    peak.date[i-1] <- peak[complete.cases(peak)]
+}
+eval <- cbind(eval,peak.date)
+
+stargazer(eval,type="text")
+
+#ps.RS.ts <- ts(all_indices[,"ps.RS(0.1%)"], start =c(2000,1),end=c(2015,2),frequency=4 )
+#turnpoints(ps.RS.ts)
+#turnsStats(ps.RS.ts)
+#findPeaks(ts.all_indices[,2],thresh = 8)
+
+# Check overlap interme van confidence intervals?
+# Check predictive ability in-sample en out-of-sample?
 
 
 #==============================#

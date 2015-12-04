@@ -2,24 +2,23 @@
 title: "Untitled"
 author: "Bing"
 date: "02 December 2015"
-output: pdf_document
+output: html_document
 ---
 
 ##Hedonic
 
-$$ equation $$ 
-some $A = \pi*r^{2}$ text
-
-##Hedonic
-
-some $$\ln P_{it} =\alpha+\sum_{j=1}^z\beta_jX_{ij}+\sum_{t=0}^\tau\gamma_tD_{it}+\epsilon_{it}$$ text
+$$\ln P_{it} =\alpha+\sum_{j=1}^z\beta_jX_{ij}+\sum_{t=0}^\tau\gamma_tD_{it}+\epsilon_{it}$$
 
 ###Reputaion variable
 
-$$Index = \frac{\prod_{i=1}^n(P_{i,t+1})^\frac{1}{n}}{\prod_{i=1}^m(P_{i,t})^\frac{1}{m}} $$
+$$Index = \frac{\prod_{i=1}^n(P_{i,t+1})^\frac{1}{n}}{\prod_{i=1}^m(P_{i,t})^\frac{1}{m}}/\text{hedonic adjustment} $$
 
-$$\exp[\sum_{j=1}^z\beta_j(\sum_{i=0}^n\frac{X_{ij,t+1}{n}-\sum_{i=1}^m\frac{X_{ij,t}{m}}})]
+$$\text{hedonic adjustment} = \exp \left[\sum_{j=1}^z\beta_j(\sum_{i=0}^n \frac{X_{ij,t+1}}{n}- \sum_{i=1}^m \frac{X_{ij,t}}{m})\right]$$
 
+
+$$\text{Artist reputation index} = \frac{\prod_{i=1}^n(P_{i,y})^\frac{1}{n}/\prod_{i=1}^m(P_{i,0})^\frac{1}{m}}{\exp \left[\sum_{j=1}^z\beta_j(\sum_{i=0}^n \frac{X_{ij,y}}{n}- \sum_{i=1}^m \frac{X_{ij,0}}{m})\right]} $$
+
+$$Index = \frac{\frac{\prod_{i=1}^n(P_{i,y})^\frac{1}{n}}{\prod_{i=1}^m(P_{i,0})^\frac{1}{m}}}{\exp \left[\sum_{j=1}^z\beta_j(\sum_{i=0}^n \frac{X_{ij,y}}{n}- \sum_{i=1}^m \frac{X_{ij,0}}{m})\right]} $$
 
 ##Repeat Sales
 
@@ -29,6 +28,16 @@ $$\ln\frac{P_{t+1}}{P_t} =\sum_{i=1}^t\gamma_id_{i}+\epsilon_{i}$$
 ##Hybrid
 
 $$\ln P_{bsj} - \ln P_{arj}=\sum_{k=1}^K\beta_k(X_{bsjk}-X_{arjk})+\sum_{t=0}^\tau\gamma_td_{t}+\epsilon_{srabj}$$
+
+
+
+##Evaluation
+
+$M_t=M_{t-1}+r_t$ and $I_t=M_t+\epsilon_t=\sum_{i=1}^tr_i+\epsilon_t$
+
+$r_t^*=I_t-I_{t-1}=r_t+(\epsilon_t-\epsilon_{t-1})= r_t+\eta_t$
+
+$Vol=\sigma_{r_t^*}=\sqrt{\sigma_r^2+\sigma_\eta^2}$ and $AC(1)=\rho_{r^*}=(\rho_r\sigma_r^2-\sigma_\eta^2/2)/(\sigma_r^2+\sigma_\eta^2)$ 
 
 
 

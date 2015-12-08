@@ -1,0 +1,46 @@
+---
+title: "Bibliography"
+author: "Bing"
+date: "07 December 2015"
+output: pdf_document
+bibliography: References.bib
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+summary(cars)
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot [@Areal2013].
+
+Blah blah [see @Areal2013, pp. 33-35; also @Ashenfelter2003, ch. 1].
+
+Blah blah [@Ashenfelter2003, pp. 33-35, 38-39 and *passim*].
+
+Blah blah [@Ashenfelter2003; @Areal2013].
+A minus sign (-) before the @ will suppress mention of the author in the citation.[^1] This can be useful when the author is already mentioned in the text:
+
+Smith says blah [-@Areal2013].
+You can also write an in-text citation, as follows:
+
+@Areal2013 says blah.
+
+@Areal2013 [p. 33] says blah.
+
+[^1]: Here is the footnote.
+
+
+#References
+
+
+
+

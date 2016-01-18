@@ -489,6 +489,28 @@ g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
 g
 #dev.off()
 
+##Re-weighted to 2000=100
+hedonic_rew <- hedonic_indices
+hedonic_rew[,2] <- hedonic_indices[,2]/mean(c(100,hedonic_indices[1,2],hedonic_indices[2,2],
+                                              hedonic_indices[3,2]))*100 
+hedonic_rew[,3] <- hedonic_indices[,3]/mean(c(100,hedonic_indices[1,3],hedonic_indices[2,3],
+                                              hedonic_indices[3,3]))*100 
+hedonic_rew[,4] <- hedonic_indices[,4]/mean(c(100,hedonic_indices[1,4],hedonic_indices[2,4],
+                                              hedonic_indices[3,4]))*100 
+hedonic_rew[,5] <- hedonic_indices[,5]/mean(c(100,hedonic_indices[1,5],hedonic_indices[2,5],
+                                              hedonic_indices[3,5]))*100 
+
+index_plot <- melt(hedonic_rew, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
+g
+
+
 ##Confidence Interval
 
 modeldata <- artdata
@@ -1024,6 +1046,12 @@ ps.RS_1 <- ps.RS(0.001)
 ps.RS_2 <- ps.RS(0.0001)
 ps.RS_n <- ps.RS("nearest")
 
+##WAT VAN WEIGHTED O GENERALISED LEAST SQUARES (GLS or WLS)??
+##SIEN OF REPEAT SALES DIT DOEN
+#repsale(price0,time0,price1,time1,mergefirst=1,
+#        graph=TRUE,graph.conf=TRUE,conf=.95,
+#        stage3=FALSE,stage3_xlist=~timesale,print=TRUE)
+
 rep_indices <- ps.RS_1[,c(2,3)] #time_results
 rep_indices$Date <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
                       "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
@@ -1065,6 +1093,27 @@ g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
 g
 #dev.off()
 
+
+##Re-weighted to 2000=100
+rep_rew <- rep_indices
+rep_rew[,2] <- rep_indices[,2]/mean(c(100,rep_indices[1,2],rep_indices[2,2],
+                                      rep_indices[3,2]))*100 
+rep_rew <- rep_indices
+rep_rew[,4] <- rep_indices[,4]/mean(c(100,rep_indices[1,4],rep_indices[2,4],
+                                      rep_indices[3,4]))*100 
+rep_rew <- rep_indices
+rep_rew[,5] <- rep_indices[,5]/mean(c(100,100,rep_indices[2,5],
+                                      rep_indices[3,5]))*100 
+
+index_plot <- melt(rep_rew, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
+g
 
 
 #--------Dit is die ou version-----------------------------------------------------------------------------------------
@@ -1430,3 +1479,88 @@ stargazer(eval,type="text")
 #==============================#
 
 # Check explosivity of time series
+library(tseries)
+adf.test(x, alternative = c("stationary", "explosive"),
+         k = trunc((length(x)-1)^(1/3)))
+
+#Loop oor dievolgende toets (vir die window size en die veskillende indekse)
+toets <- adf.test(hedonic_indices, alternative = "explosive", k=4)
+bubble$stat <- toets$statistic
+bubble$p <- toets$p.value  #maar wat is die critical value? Simulate self
+
+
+#OF:
+library(urca)
+ur.df(y, type = c("none", "drift", "trend"), lags = 1,
+      selectlags = c("Fixed", "AIC", "BIC"))
+
+
+#---------------------------------------------------------------------------
+
+library(dyn)
+yt <- ts(y)
+xt <- ts(x)
+dyn$lm(yt ~ xt + lag(yt, -1))
+
+
+##--------------------------------------------------------------------------
+#K1 <- numeric()
+#K2 <- numeric()
+#K3 <- numeric()
+
+#for(j in 10:62) {
+
+#Chris Brooks Eviews version
+set.seed(123)                           #for replicability
+reps <- 2000                            #Monte Carlo replications
+burn <- 50                              #burn in periods: first generate a T+B sample
+#To make "sure" that influence of initial values has faded
+obs <- 62                               #ultimate sample size
+#obs <- j
+
+tstat.nc <- numeric()
+tstat.c <- numeric()
+tstat.ct <- numeric()
+
+for(i in 1:reps) {     
+    e <- rnorm(obs+burn)
+    e[1] <- 0
+    Y1 <- cumsum(e)
+    DY1 <- diff(Y1)
+    trend <- 1:obs
+    
+    y1 <- Y1[(burn+1):(obs+burn)]               #trim off burn period
+    dy1 <- DY1[(burn+1):(obs+burn)]             
+    ly1 <- Y1[burn:(obs+burn-1)] 
+    
+    EQ1 <- lm(dy1 ~ 0 + ly1)       
+    tstat.nc <- rbind(tstat.nc,summary(EQ1)$coefficients[1,3]) 
+    EQ2 <- lm(dy1 ~ ly1)            
+    tstat.c <- rbind(tstat.c,summary(EQ2)$coefficients[2,3])  
+    EQ3 <- lm(dy1 ~ lag(y1) + trend)    
+    tstat.ct <- rbind(tstat.ct,summary(EQ3)$coefficients[2,3]) 
+}                                       
+
+#hist(tstat.nc)
+K1 <- quantile(tstat.nc, probs=c(0.9,0.95,0.99)) 
+K2 <- quantile(tstat.c, probs=c(0.9,0.95,0.99))
+K3 <- quantile(tstat.ct, probs= c(0.9,0.95,0.99))
+
+#K1 <- rbind(K1,quantile(tstat.nc, probs=c(0.9,0.95,0.99)))
+#K2 <- rbind(K2,quantile(tstat.c, probs=c(0.9,0.95,0.99)))
+#K3 <- rbind(K3,quantile(tstat.ct, probs= c(0.9,0.95,0.99)))
+#}
+
+
+#return(K1,K2,K3)
+
+#REPEAT HIERDIE EXERCISE VIR 1-62 OBSERVATIONS?
+#- DIT GEE 'N VECTOR VAN 62 CRITICAL VALUES
+
+#crit. <- data.frame()
+#for(j in 10:62) { 
+#    monte.carlo(j)
+#}
+
+##---------------------------------------------------------------------------
+

@@ -1116,6 +1116,13 @@ g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
 g
 
 
+
+
+write.csv(rep_indices,file="rep_indices.csv")
+write.csv(hedonic_indices,file="hedonic_indices.csv")
+
+check <- read.csv("hedonic_indices.csv")
+
 #--------Dit is die ou version-----------------------------------------------------------------------------------------
 #Alternatively, one can set a specified threshold, with all the pairs ranking from the smallest to the largest 
 #distance values, and then select the lowest x% of the pairs with their distance metric smaller than a certain value. 
@@ -1426,9 +1433,14 @@ summary(model_100)$coefficients
 ## EVALUATION ##
 ##============##
 
-all_indices <- cbind(hedonic_indices,rep_indices[,-1])
+all_indices <- cbind(hedonic_indices[-1],rep_indices[,-1])
 #all_indices <- cbind(all_indices,dum_indices)
-all_indices <- rbind(c("2000Q1",seq(100,100, length.out = ncol(rep_indices))),all_indices)
+#all_indices <- rbind(c("2000Q1",seq(100,100, length.out = ncol(rep_indices))),all_indices)
+all_indices <- rbind(c(seq(100,100, length.out = ncol(rep_indices))),all_indices)
+all_indices[2,8] <- 100
+
+##Make them real???
+
 for(i in 2:ncol(all_indices)) {all_indices[,i] <- as.numeric(all_indices[,i]) }
 ts.all_indices <- as.ts(all_indices[,-1],start =c(2000,1),end=c(2015,2),frequency=4 ) 
 
@@ -1478,14 +1490,16 @@ stargazer(eval,type="text")
 # Bubbles: Explosive Behaviour
 #==============================#
 
+y <- hedonic_indices[,2]
+
 # Check explosivity of time series
 library(tseries)
-adf.test(x, alternative = c("stationary", "explosive"),
-         k = trunc((length(x)-1)^(1/3)))
+adf.test(y, alternative = c("stationary", "explosive"),k = trunc((length(x)-1)^(1/3)))
 
 #Loop oor dievolgende toets (vir die window size en die veskillende indekse)
-toets <- adf.test(hedonic_indices, alternative = "explosive", k=4)
-bubble$stat <- toets$statistic
+toets1 <- adf.test(y, alternative = "explosive", k=4)
+bubble <- toets1$statistic
+
 bubble$p <- toets$p.value  #maar wat is die critical value? Simulate self
 
 
@@ -1494,7 +1508,74 @@ library(urca)
 ur.df(y, type = c("none", "drift", "trend"), lags = 1,
       selectlags = c("Fixed", "AIC", "BIC"))
 
+toets2 <- ur.df(y, c("none", "drift", "trend"), lags = 4, selectlags = c("AIC"))
+bubble2 <- toets2@teststat
 
+summary(toets2)
+
+
+y <- hedonic_indices[,2]
+toets <- ur.df(y, type= "none", lags = 4, selectlags = c("AIC"))
+toets <- ur.df(y, type= "drift", lags = 4, selectlags = c("AIC"))
+toets <- ur.df(y, type= "trend", lags = 4, selectlags = c("AIC"))
+summary(toets)
+
+#indicate dat daar nie 'n drift of trend component hoef te wees nie.
+
+y_indices <- all_indices[,-6]
+bubble.nc <- list()
+for(i in 1:ncol(y_indices)) {
+    #bubble1 <- numeric()
+    bubble <- numeric()
+    for(j in 12:62) {
+        y <- y_indices[1:j,i]
+        #toets1 <- adf.test(y, alternative = "explosive", k=4)
+        #bubble1 <- rbind(bubble1,toets1$statistic)
+        toets <- ur.df(y, type= "none", lags = 4, selectlags = c("AIC"))
+        #toets <- ur.df(y, type= "drift", lags = 4, selectlags = c("AIC"))
+        #toets <- ur.df(y, type= "trend", lags = 4, selectlags = c("AIC"))
+        bubble <- rbind(bubble,toets@teststat)
+        
+    }
+    bubble.nc[[i]] <- bubble
+}
+
+y_indices <- all_indices[,-6]
+bubble.c <- list()
+for(i in 1:ncol(y_indices)) {
+    #bubble1 <- numeric()
+    bubble <- numeric()
+    for(j in 12:62) {
+        y <- y_indices[1:j,i]
+        #toets1 <- adf.test(y, alternative = "explosive", k=4)
+        #bubble1 <- rbind(bubble1,toets1$statistic)
+        #toets <- ur.df(y, type= "none", lags = 4, selectlags = c("AIC"))
+        toets <- ur.df(y, type= "drift", lags = 4, selectlags = c("AIC"))
+        #toets <- ur.df(y, type= "trend", lags = 4, selectlags = c("AIC"))
+        bubble <- rbind(bubble,toets@teststat)
+        
+    }
+    bubble.c[[i]] <- bubble
+}
+
+
+y_indices <- all_indices[,-6]
+bubble.ct <- list()
+for(i in 1:ncol(y_indices)) {
+    #bubble1 <- numeric()
+    bubble <- numeric()
+    for(j in 12:62) {
+        y <- y_indices[1:j,i]
+        #toets1 <- adf.test(y, alternative = "explosive", k=4)
+        #bubble1 <- rbind(bubble1,toets1$statistic)
+        #toets <- ur.df(y, type= "none", lags = 4, selectlags = c("AIC"))
+        #toets <- ur.df(y, type= "drift", lags = 4, selectlags = c("AIC"))
+        toets <- ur.df(y, type= "trend", lags = 4, selectlags = c("AIC"))
+        bubble <- rbind(bubble,toets@teststat)
+        
+    }
+    bubble.ct[[i]] <- bubble
+}
 #---------------------------------------------------------------------------
 
 library(dyn)
@@ -1504,52 +1585,51 @@ dyn$lm(yt ~ xt + lag(yt, -1))
 
 
 ##--------------------------------------------------------------------------
-#K1 <- numeric()
-#K2 <- numeric()
-#K3 <- numeric()
+K1 <- numeric()
+K2 <- numeric()
+K3 <- numeric()
 
-#for(j in 10:62) {
-
-#Chris Brooks Eviews version
-set.seed(123)                           #for replicability
-reps <- 2000                            #Monte Carlo replications
-burn <- 50                              #burn in periods: first generate a T+B sample
-#To make "sure" that influence of initial values has faded
-obs <- 62                               #ultimate sample size
-#obs <- j
-
-tstat.nc <- numeric()
-tstat.c <- numeric()
-tstat.ct <- numeric()
-
-for(i in 1:reps) {     
-    e <- rnorm(obs+burn)
-    e[1] <- 0
-    Y1 <- cumsum(e)
-    DY1 <- diff(Y1)
-    trend <- 1:obs
+for(j in 12:62) {
     
-    y1 <- Y1[(burn+1):(obs+burn)]               #trim off burn period
-    dy1 <- DY1[(burn+1):(obs+burn)]             
-    ly1 <- Y1[burn:(obs+burn-1)] 
+    set.seed(123)                           #for replicability
+    reps <- 2000                            #Monte Carlo replications
+    burn <- 50                              #burn in periods: first generate a T+B sample
+    #To make "sure" that influence of initial values has faded
+    #obs <- 62                              #ultimate sample size
+    obs <- j
     
-    EQ1 <- lm(dy1 ~ 0 + ly1)       
-    tstat.nc <- rbind(tstat.nc,summary(EQ1)$coefficients[1,3]) 
-    EQ2 <- lm(dy1 ~ ly1)            
-    tstat.c <- rbind(tstat.c,summary(EQ2)$coefficients[2,3])  
-    EQ3 <- lm(dy1 ~ lag(y1) + trend)    
-    tstat.ct <- rbind(tstat.ct,summary(EQ3)$coefficients[2,3]) 
-}                                       
-
-#hist(tstat.nc)
-K1 <- quantile(tstat.nc, probs=c(0.9,0.95,0.99)) 
-K2 <- quantile(tstat.c, probs=c(0.9,0.95,0.99))
-K3 <- quantile(tstat.ct, probs= c(0.9,0.95,0.99))
-
-#K1 <- rbind(K1,quantile(tstat.nc, probs=c(0.9,0.95,0.99)))
-#K2 <- rbind(K2,quantile(tstat.c, probs=c(0.9,0.95,0.99)))
-#K3 <- rbind(K3,quantile(tstat.ct, probs= c(0.9,0.95,0.99)))
-#}
+    tstat.nc <- numeric()
+    tstat.c <- numeric()
+    tstat.ct <- numeric()
+    
+    for(i in 1:reps) {     
+        e <- rnorm(obs+burn)
+        e[1] <- 0
+        Y1 <- cumsum(e)
+        DY1 <- diff(Y1)
+        
+        y1 <- Y1[(burn+1):(obs+burn)]               #trim off burn period
+        dy1 <- DY1[(burn+1):(obs+burn)]             
+        ly1 <- Y1[burn:(obs+burn-1)] 
+        trend <- 1:obs
+        
+        EQ1 <- lm(dy1 ~ 0 + ly1)       
+        tstat.nc <- rbind(tstat.nc,summary(EQ1)$coefficients[1,3]) 
+        EQ2 <- lm(dy1 ~ ly1)            
+        tstat.c <- rbind(tstat.c,summary(EQ2)$coefficients[2,3])  
+        EQ3 <- lm(dy1 ~ lag(y1) + trend)    
+        tstat.ct <- rbind(tstat.ct,summary(EQ3)$coefficients[2,3]) 
+    }                                       
+    
+    #hist(tstat.nc)
+    #K1 <- quantile(tstat.nc, probs=c(0.9,0.95,0.99)) 
+    #K2 <- quantile(tstat.c, probs=c(0.9,0.95,0.99))
+    #K3 <- quantile(tstat.ct, probs= c(0.9,0.95,0.99))
+    
+    K1 <- rbind(K1,quantile(tstat.nc, probs=c(0.9,0.95,0.99)))
+    K2 <- rbind(K2,quantile(tstat.c, probs=c(0.9,0.95,0.99)))
+    K3 <- rbind(K3,quantile(tstat.ct, probs= c(0.9,0.95,0.99)))
+}
 
 
 #return(K1,K2,K3)
@@ -1561,6 +1641,3 @@ K3 <- quantile(tstat.ct, probs= c(0.9,0.95,0.99))
 #for(j in 10:62) { 
 #    monte.carlo(j)
 #}
-
-##---------------------------------------------------------------------------
-

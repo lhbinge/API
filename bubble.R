@@ -156,9 +156,60 @@ for(j in 12:62) {
 #}
 
 ##---------------------------------------------------------------------------
+bubble.test <- numeric()
+for(k in 1:7) { bubble.test <- cbind(bubble.test,bubble.nc[[k]])}
+bubble.test <- as.data.frame(bubble.test)
+#colnames(bubble.test) <- colnames(y_indices)
+bubble.test <- cbind(bubble.test,K1)
+bubble.test$Date <- c("2002Q4","2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+                       "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+                       "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+                       "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                       "2015Q1","2015Q2")
+
+index_plot <- bubble.test[,c(1,8,9,10,11)]
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g
+
+index_plot <- bubble.test[,c(5,8,9,10,11)]
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g
 
 
 
+datum <- data.frame()
+datums <- data.frame()
+for(i in 1:7) {
+    for(l in 1:51) {
+        if(bubble.test[l,i]>bubble.test$"95%") { 
+            datum[l,i] <- bubble.test[l,"Date"]
+        }
+    }
+    NonNAindex <- which(!is.na(datum[,i]))
+    firstNonNA <- min(NonNAindex)
+    datums[1,i] <- datum[firstNonNA,i]
+    lastNonNA <- max(NonNAindex)
+    datums[2,i] <- datum[lastNonNA,i]
+}
+
+colnames(datums) <- colnames(bubble.test[1:7])
+rownames(datums) <- c("start","end")
+datums <- t(datums)
+xt <- xtable(datums, caption="Dates of explovive behaviour")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+#table(datums)
 
 
 

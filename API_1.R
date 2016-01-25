@@ -654,7 +654,8 @@ g
 
 naive_index <- aggregate(artdata$price, by=list(artdata$timedummy), FUN=median, na.rm=TRUE)
 naive_index$index <- naive_index$x
-naive_index$index <- naive_index$index/naive_index2[1,3]*100
+#naive_index$index <- naive_index$index/naive_index2[1,3]*100
+naive_index$index <- naive_index$index/naive_index[1,2]*100
 
 index_plot <- rolling[,c(1,2,15)]
 index_plot <- cbind(index_plot,Index_Adjacent=overlap[,19])
@@ -1042,8 +1043,8 @@ ps.RS <- function(threshold) {
     return(ps.RS_results)
 }
 
-ps.RS_1 <- ps.RS(0.001)
-ps.RS_2 <- ps.RS(0.0001)
+ps.RS_1 <- ps.RS(0.00005)
+ps.RS_2 <- ps.RS(0.00001)
 ps.RS_n <- ps.RS("nearest")
 
 ##WAT VAN WEIGHTED O GENERALISED LEAST SQUARES (GLS or WLS)??
@@ -1068,7 +1069,7 @@ repeatsales_index$Date <- c("2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1
                             "2015Q1","2015Q2")
 rep_indices <- merge(rep_indices, repeatsales_index, by="Date", all=TRUE)
 
-rep_indices <- cbind(rep_indices,Full_ps.RS2=ps.RS_2[,2])
+rep_indices <- cbind(rep_indices,ps.RS_2[,2])
 
 ps.RS_n$Date <- c("2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
                   "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
@@ -1079,7 +1080,7 @@ ps.RS_n$Date <- c("2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1"
 rep_indices <- merge(rep_indices, ps.RS_n, by="Date", all=TRUE)
 
 rep_indices <- rep_indices[,c(1,4,7,2,5)]
-colnames(rep_indices) <- c("Date","Repeat Sales","ps.RS(nearest)","ps.RS(0.1%)","ps.RS(0.01%)")    
+colnames(rep_indices) <- c("Date","Repeat Sales","ps.RS(nearest)","ps.RS(0.005%)","ps.RS(0.001%)")    
 
 #png(file = "Repeat Sales.png", width=600,height=360)
 index_plot <- melt(rep_indices, id="Date")  # convert to long format
@@ -1433,32 +1434,93 @@ summary(model_100)$coefficients
 ## EVALUATION ##
 ##============##
 
-all_indices <- cbind(hedonic_indices[-1],rep_indices[,-1])
-#all_indices <- cbind(all_indices,dum_indices)
-#all_indices <- rbind(c("2000Q1",seq(100,100, length.out = ncol(rep_indices))),all_indices)
+all_indices <- cbind(hedonic_indices[-1],rep_indices[,c(-1,-2)])
 all_indices <- rbind(c(seq(100,100, length.out = ncol(rep_indices))),all_indices)
-all_indices[2,8] <- 100
+all_indices[2,5] <- 100
+
+rw_indices <- all_indices  ##Re-weighted to 2000=100
+for(i in 1:7) {
+    rw_indices[,i] <- all_indices[,i]/mean(all_indices[1:4,i])*100 
+}
+Date <- as.factor(c("2000Q1","2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
+                    "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+                    "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+                    "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+                    "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                    "2015Q1","2015Q2"))
+
+index_plot <- cbind(all_indices,Date)
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank())
+g
+
+index_plot <- cbind(all_indices,Date)
+index_plot <- cbind(index_plot[,c(1,6,7,8)],naive_index$index)
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank())
+g
+
 
 ##Make them real???
-
-for(i in 2:ncol(all_indices)) {all_indices[,i] <- as.numeric(all_indices[,i]) }
-ts.all_indices <- as.ts(all_indices[,-1],start =c(2000,1),end=c(2015,2),frequency=4 ) 
+for(i in 1:ncol(all_indices)) {all_indices[,i] <- as.numeric(all_indices[,i]) }
+ts.all_indices <- as.ts(all_indices,start =c(2000,1),end=c(2015,2),frequency=4) 
 
 # Check correlations (in levels and growth rates)
-cor(ts.all_indices, use ="complete.obs") 
+#cor(ts.all_indices, use ="complete.obs") 
 dl.indices <- as.data.frame(diff(log(ts.all_indices)))
-cor(dl.indices, use ="complete.obs")
+#cor(dl.indices, use ="complete.obs")
+source("corstarsl.R")
+xt <- xtable(corstarsl(ts.all_indices), caption="Correlations in Levels")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+xt <- xtable(corstarsl(dl.indices[c(-1:-3),]), caption="Correlations in DLogs")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+
 
 # Check annual growth rates 
-areturns <- data.frame()
-for(i in 1:ncol(ts.all_indices)) {
-    areturns <- cbind(returns, annualReturn(ts.all_indices[,i], type='log'))
+#areturns <- data.frame()
+#for(i in 1:ncol(ts.all_indices)) {
+#    areturns <- cbind(areturns, annualReturn(ts.all_indices[,i], type='log'))
+#}
+#colnames(areturns) <- colnames(ts.all_indices)
+#cor(areturns)
+
+# Check consistency in terme van turning points
+
+
+peak <- data.frame()
+peak.date <- data.frame()
+indices <- cbind(all_indices,Date)
+for(i in 1:7) {
+    for(l in 1:62) {
+        if(indices[l,i]==max(indices[,i],na.rm = TRUE)) { 
+            peak[1,i] <- indices[l,"Date"]
+        }
+    }
 }
-colnames(areturns) <- colnames(ts.all_indices)
-cor(areturns)
+
+
+#stargazer(eval,type="text")
+
+#ps.RS.ts <- ts(all_indices[,"ps.RS(0.1%)"], start =c(2000,1),end=c(2015,2),frequency=4)
+#turnpoints(ps.RS.ts)
+#turnsStats(ps.RS.ts)
+#findPeaks(ts.all_indices[,2],thresh = 8)
+
 
 # Check std dev or volatility en AC(1)
-ac.1<-numeric()
+ac.1 <-numeric()
 eval <- data.frame()
 
 vol <- apply(ts.all_indices,MARGIN=2, FUN=sd, na.rm=TRUE)
@@ -1466,63 +1528,88 @@ for(i in 1:ncol(ts.all_indices)) {
     ac.1[i] <- acf(ts.all_indices,na.action = na.pass, plot = FALSE, lag.max = 1)$acf[,,i][2,i]
 }
 eval <- cbind(vol=vol,ac.1=ac.1)
-
-# Check consistency in terms van turning points
-peak.date<- character()
-for(i in 2:ncol(all_indices)) {
-    peak <- all_indices[all_indices[,i]==max(all_indices[,i],na.rm = TRUE),1]
-    peak.date[i-1] <- peak[complete.cases(peak)]
-}
-eval <- cbind(eval,peak.date)
-
-stargazer(eval,type="text")
-
-#ps.RS.ts <- ts(all_indices[,"ps.RS(0.1%)"], start =c(2000,1),end=c(2015,2),frequency=4)
-#turnpoints(ps.RS.ts)
-#turnsStats(ps.RS.ts)
-#findPeaks(ts.all_indices[,2],thresh = 8)
+xt <- xtable(eval, caption="Smoothness Indicators")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
 
 # Check overlap interme van confidence intervals?
 # Check predictive ability in-sample en out-of-sample?
 
 
+sd(ps.RS_test$index_all)
+acf(ps.RS_test$index_all,na.action = na.pass, plot = FALSE, lag.max = 1)
+
+#Consistency van observable characteristics
+sapply(artdata[artdata$year<2005,c("lnprice","area","dum_signed","dum_dated","nr_works")], mean, na.rm=TRUE)
+sapply(artdata[artdata$year>2004 & artdata$year<2010,c("lnprice","area","dum_signed","dum_dated","nr_works")], mean, na.rm=TRUE)
+sapply(artdata[artdata$year>2009,c("lnprice","area","dum_signed","dum_dated","nr_works")], mean, na.rm=TRUE)
+
+summary(artdata[artdata$year<2005,c("med_code","ah_code")])
+summary(artdata[artdata$year>2004 & artdata$year<2010,c("med_code","ah_code")])
+summary(artdata[artdata$year>2009,c("med_code","ah_code")])
+#But his does not prove much - since we cannot zee unobservables
+
+
+#Compared to other assets and art markets
+assets <- read.csv("Assets.csv", header=TRUE, na.strings = "", skipNul = TRUE)
+
+index_plot <- cbind(rw_indices[,c(1,7)],Date)
+index_plot <- cbind(index_plot,assets[,2:6])
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank())
+g
+
+#Compared to other art pices
+
+index_plot <- cbind(rw_indices[,c(1,7)],Date)
+index_plot <- cbind(index_plot,assets[,7:9])
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank())
+g
+
+
 #==============================#
 # Bubbles: Explosive Behaviour
 #==============================#
-
+# Check explosivity of time series
 y <- hedonic_indices[,2]
 
-# Check explosivity of time series
 library(tseries)
 adf.test(y, alternative = c("stationary", "explosive"),k = trunc((length(x)-1)^(1/3)))
-
-#Loop oor dievolgende toets (vir die window size en die veskillende indekse)
 toets1 <- adf.test(y, alternative = "explosive", k=4)
-bubble <- toets1$statistic
-
-bubble$p <- toets$p.value  #maar wat is die critical value? Simulate self
-
+bubble1 <- toets1$statistic
 
 #OF:
 library(urca)
 ur.df(y, type = c("none", "drift", "trend"), lags = 1,
       selectlags = c("Fixed", "AIC", "BIC"))
 
-toets2 <- ur.df(y, c("none", "drift", "trend"), lags = 4, selectlags = c("AIC"))
+toets2 <- ur.df(y, c("none"), lags = 4, selectlags = c("AIC"))
 bubble2 <- toets2@teststat
-
 summary(toets2)
 
 
-y <- hedonic_indices[,2]
+#--------------------------------------------------------------------------------
+#test for whether we should include a drift or trend term
+y <- all_indices[,6]
 toets <- ur.df(y, type= "none", lags = 4, selectlags = c("AIC"))
 toets <- ur.df(y, type= "drift", lags = 4, selectlags = c("AIC"))
 toets <- ur.df(y, type= "trend", lags = 4, selectlags = c("AIC"))
 summary(toets)
-
 #indicate dat daar nie 'n drift of trend component hoef te wees nie.
 
-y_indices <- all_indices[,-6]
+#---------------------------------------------------------------------------------
+#Get test statistics
+y_indices <- all_indices
 bubble.nc <- list()
 for(i in 1:ncol(y_indices)) {
     #bubble1 <- numeric()
@@ -1535,56 +1622,13 @@ for(i in 1:ncol(y_indices)) {
         #toets <- ur.df(y, type= "drift", lags = 4, selectlags = c("AIC"))
         #toets <- ur.df(y, type= "trend", lags = 4, selectlags = c("AIC"))
         bubble <- rbind(bubble,toets@teststat)
-        
     }
     bubble.nc[[i]] <- bubble
 }
 
-y_indices <- all_indices[,-6]
-bubble.c <- list()
-for(i in 1:ncol(y_indices)) {
-    #bubble1 <- numeric()
-    bubble <- numeric()
-    for(j in 12:62) {
-        y <- y_indices[1:j,i]
-        #toets1 <- adf.test(y, alternative = "explosive", k=4)
-        #bubble1 <- rbind(bubble1,toets1$statistic)
-        #toets <- ur.df(y, type= "none", lags = 4, selectlags = c("AIC"))
-        toets <- ur.df(y, type= "drift", lags = 4, selectlags = c("AIC"))
-        #toets <- ur.df(y, type= "trend", lags = 4, selectlags = c("AIC"))
-        bubble <- rbind(bubble,toets@teststat)
-        
-    }
-    bubble.c[[i]] <- bubble
-}
-
-
-y_indices <- all_indices[,-6]
-bubble.ct <- list()
-for(i in 1:ncol(y_indices)) {
-    #bubble1 <- numeric()
-    bubble <- numeric()
-    for(j in 12:62) {
-        y <- y_indices[1:j,i]
-        #toets1 <- adf.test(y, alternative = "explosive", k=4)
-        #bubble1 <- rbind(bubble1,toets1$statistic)
-        #toets <- ur.df(y, type= "none", lags = 4, selectlags = c("AIC"))
-        #toets <- ur.df(y, type= "drift", lags = 4, selectlags = c("AIC"))
-        toets <- ur.df(y, type= "trend", lags = 4, selectlags = c("AIC"))
-        bubble <- rbind(bubble,toets@teststat)
-        
-    }
-    bubble.ct[[i]] <- bubble
-}
-#---------------------------------------------------------------------------
-
-library(dyn)
-yt <- ts(y)
-xt <- ts(x)
-dyn$lm(yt ~ xt + lag(yt, -1))
-
 
 ##--------------------------------------------------------------------------
+#Get critical values
 K1 <- numeric()
 K2 <- numeric()
 K3 <- numeric()
@@ -1594,7 +1638,7 @@ for(j in 12:62) {
     set.seed(123)                           #for replicability
     reps <- 2000                            #Monte Carlo replications
     burn <- 50                              #burn in periods: first generate a T+B sample
-    #To make "sure" that influence of initial values has faded
+                                            #To make "sure" that influence of initial values has faded
     #obs <- 62                              #ultimate sample size
     obs <- j
     
@@ -1622,22 +1666,70 @@ for(j in 12:62) {
     }                                       
     
     #hist(tstat.nc)
-    #K1 <- quantile(tstat.nc, probs=c(0.9,0.95,0.99)) 
-    #K2 <- quantile(tstat.c, probs=c(0.9,0.95,0.99))
-    #K3 <- quantile(tstat.ct, probs= c(0.9,0.95,0.99))
-    
     K1 <- rbind(K1,quantile(tstat.nc, probs=c(0.9,0.95,0.99)))
     K2 <- rbind(K2,quantile(tstat.c, probs=c(0.9,0.95,0.99)))
     K3 <- rbind(K3,quantile(tstat.ct, probs= c(0.9,0.95,0.99)))
 }
 
+#Dit gee 'n vector van critical values
 
-#return(K1,K2,K3)
 
-#REPEAT HIERDIE EXERCISE VIR 1-62 OBSERVATIONS?
-#- DIT GEE 'N VECTOR VAN 62 CRITICAL VALUES
+##---------------------------------------------------------------------------
+#plot die test stats en critical values 
 
-#crit. <- data.frame()
-#for(j in 10:62) { 
-#    monte.carlo(j)
-#}
+bubble.test <- numeric()
+for(k in 1:7) { bubble.test <- cbind(bubble.test,bubble.nc[[k]])}
+bubble.test <- as.data.frame(bubble.test)
+#colnames(bubble.test) <- colnames(y_indices)
+bubble.test <- cbind(bubble.test,K1)
+bubble.test$Date <- c("2002Q4","2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+                      "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+                      "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+                      "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                      "2015Q1","2015Q2")
+
+index_plot <- bubble.test[,c(7,8,9,10,11)]
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g
+
+index_plot <- bubble.test[,c(6,8,9,10,11)]
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g
+
+
+#report die bubble period datums
+datum <- data.frame()
+datums <- data.frame()
+for(i in 1:7) {
+    for(l in 1:51) {
+        if(bubble.test[l,i]>bubble.test$"95%") { 
+            datum[l,i] <- bubble.test[l,"Date"]
+        }
+    }
+    NonNAindex <- which(!is.na(datum[,i]))
+    firstNonNA <- min(NonNAindex)
+    datums[1,i] <- datum[firstNonNA,i]
+    lastNonNA <- max(NonNAindex)
+    datums[2,i] <- datum[lastNonNA,i]
+}
+
+colnames(datums) <- colnames(bubble.test[1:7])
+rownames(datums) <- c("start","end")
+datums <- t(datums)
+xt <- xtable(datums, caption="Dates of explovive behaviour")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+#table(datums)

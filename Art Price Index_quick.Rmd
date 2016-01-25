@@ -611,8 +611,8 @@ ps.RS <- function(threshold) {
     return(ps.RS_results)
 }
 
-ps.RS_1 <- ps.RS(0.001)
-ps.RS_2 <- ps.RS(0.0001)
+ps.RS_1 <- ps.RS(0.0001)
+ps.RS_2 <- ps.RS(0.00005)
 ps.RS_n <- ps.RS("nearest")
 
 rep_indices <- ps.RS_1[,c(2,3)] #time_results
@@ -641,8 +641,8 @@ ps.RS_n$Date <- c("2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1"
                   "2015Q1","2015Q2")
 rep_indices <- merge(rep_indices, ps.RS_n, by="Date", all=TRUE)
 
-rep_indices <- rep_indices[,c(-3,-6,-8,-9)]
-colnames(rep_indices) <- c("Date","ps.RS(0.1%)","Repeat Sales","ps.RS(0.01%)","ps.RS(nearest)")    
+rep_indices <- rep_indices[,c(1,4,7,2,5)]
+colnames(rep_indices) <- c("Date","Repeat Sales","ps.RS(nearest)","ps.RS(0.01%)","ps.RS(0.005%)")    
 ```
 
 The hybrid repeat sales model is then be used to generate the art price indices. Figure 5 illustrates the three versions of the ps-RS indices, as well as the traditional repeat sales index. The indices follow a similar pattern.
@@ -667,6 +667,35 @@ As all of these approaches involve estimating unknown parameters, there is no wa
 
 The indices can be compared and evaluated in a number of ways. The first step is to compare the indices from the three methodologies graphically. Figure 11 illustrates three representative indices for the three methodologies: the stratified central tendency index, the pooled hedonic index and the ps-RS index. There are large differences between the three measures, suggesting that adjusting for the composition and quality of artworks sold may provide better estimates of pure price changes. 
 
+[^24]: Confidence intervals of the time dummy estimates can be constructed to see if they are statistically different. It is then possible to examine whether there is any overlap between the confidence intervals. For instance, @Kraussl2008 constructed confidence intervals for the time dummy estimates as follows: $\exp(\gamma_t ± 2*\sigma_{\gamma t})$. We could report the proportion of the sample over which the various measures are statistically different. 
+
+```{r bubbles, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
+all_indices <- cbind(hedonic_indices[-1],rep_indices[,c(-1,-3)])
+all_indices <- rbind(c(seq(100,100, length.out = ncol(rep_indices))),all_indices)
+all_indices[2,5] <- 100
+
+Dates <- as.factor(c("2000Q1","2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
+"2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+"2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+"2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+"2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                    "2015Q1","2015Q2"))
+all_indices$Date <- Dates
+```
+
+```{r figure6, echo=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Comparing South African art price indices (2000Q1=100)"}
+index_plot <- cbind(all_indices[,c(1,6,8)],naive_index$index)
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank())
+g
+```
+
 Confidence intervals of the time dummy estimates can be constructed to see if they are statistically different. It is then possible to examine whether there is any overlap between the confidence intervals. For instance, @Kraussl2008 constructed confidence intervals for the time dummy estimates as follows: $\exp(\gamma_t ± 2*\sigma_{\gamma t})$. Table 3 reports the proportion of the sample over which the various measures are statistically different. The median is, on average, statistically different to the more advanced measures for at least half of the sample. In contrast, the more advanced measures tend to be more similar, as there are fewer periods where the measures are statistically different.
 
 The next step is to compare the fit of the models. Table 4 reports the RMSE and SSC comparing estimated price changes with the actual price changes. The RMSE statistics are very close for both the hedonic and ps-RS regressions. Similarly, the SSC statistics are close with approximately 50% of the variation in prices growth in the repeat sales sub-sample explained by each of the models. These results suggest that they are broadly equivalent in terms of model fit.
@@ -674,6 +703,24 @@ The next step is to compare the fit of the models. Table 4 reports the RMSE and 
 Table 4 also compares the average growth rates and standard deviations of the various indices. The comparison suggests that that the regression-based indices tend to be smoother than the median, on average. Estimates of the pure price changes inferred from the hedonic and ps-RS approaches were very similar, although the average growth rates were higher with the hedonic models [@Hansen2009]. 
 
 The correlations of the quarterly growth rates of the various indices can also be compared. The high correlations indicate that the general trends match across indices. The growth rates of the indices can also be compared in a graph: the dots in this panel are exactly on the 45 degree line, implying that these two indices are closely correlated with each other. It is also possible that there exist some lead-lag relationships between the indices. Pairwise Granger causality tests can be conducted to investigate such dynamic relationships between the indices. The null that the standard hedonic index does not cause the other indices can be rejected. On the other hand, the null that each of the other indices does not cause the standard hedonic index cannot be rejected. This implies that fluctuations in the standard hedonic index tend to precede those in the other indices. 
+
+```{r table4, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+for(i in 1:ncol(all_indices)) {all_indices[,i] <- as.numeric(all_indices[,i]) }
+ts.all_indices <- as.ts(all_indices,start =c(2000,1),end=c(2015,2),frequency=4) 
+
+# Check correlations (in levels and growth rates)
+#cor(ts.all_indices, use ="complete.obs") 
+dl.indices <- as.data.frame(diff(log(ts.all_indices)))
+#cor(dl.indices, use ="complete.obs")
+source("corstarsl.R")
+xt <- xtable(corstarsl(ts.all_indices), caption="Correlations in Levels")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+```
+
+```{r table5, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+xt <- xtable(corstarsl(dl.indices[c(-1:-3),]), caption="Correlations in DLogs")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+```
 
 To illustrate such lead-lag relationships between the five indexes, we compare them in terms of the timing of their turning points . All of the regression-based indices peaked in the first quarter of 2008, in contrast to the central tendency measures. The turn in the hedonic indices preceded the others. The indices also showed troughs after the financial crisis. [@Shimizu2010]. As the timing of turning points in the median did not coincide with those inferred from the more complex measures, there appeared to be several situations in which these measures have provided more consistent signals of the direction of pure art price changes [@Hansen2009]. 
 
@@ -702,20 +749,56 @@ Table 5 reports these two metric of index smoothness for the art price indices. 
 
 @Guo2014 suggest another test  of index quality in terms of minimising random error, which is based on the Hodrick & Prescott filter (HP filter). The HP filter is a spline fitting method that divides a time series into smoothed trend and cyclical components. The idea is then to examine which index has the least deviation from its smoothed HP representation. For each type of index the sum of squared differences between the index returns and its smoothed returns are calculated and compared. The results are reported in Table 5. The ps-RS index exhibits the smallest deviation from its smoothed representation.  
 
-##In-sample and out-of-sample comparisons
-Out-of-sample prediction tests offer another perspective on the reliability and robustness of the index estimation methodologies. To conduct this test, the sample is randomly divided into two sub-samples , and the index is estimated based on each of the sub-samples separately. The resulting indices can then be compared . The two indices in any pair are almost the same (no visually apparent differences) with high cross-correlation coefficients in the returns. Furthermore, we conduct mean-comparison tests between the two indices in each subsample pair with the null hypothesis as: 
+```{r table7, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+# Check std dev or volatility en AC(1)
+ac.1 <-numeric()
+eval <- data.frame()
 
-H0: mean(Index1,t - Index2,t)=0; where t indicates the period number. 
+vol <- apply(ts.all_indices,MARGIN=2, FUN=sd, na.rm=TRUE)
+for(i in 1:ncol(ts.all_indices)) {
+    ac.1[i] <- acf(ts.all_indices,na.action = na.pass, plot = FALSE, lag.max = 1)$acf[,,i][2,i]
+}
+eval <- cbind(vol=vol,ac.1=ac.1)
+xt <- xtable(eval, caption="Smoothness Indicators")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+```
 
-The H0 could not be rejected, implying that the two indices based on two randomly constructed sub-samples are statistically indistinguishable from each other [@Guo2014]. 
-Another option for evaluation would be to examine the predictive ability of the models. @Kuethe2011 suggested evaluating the ability of a range of aggregate house price indices to predict house prices out-of-sample at the transaction level. @Nagaraja2014 compared the performance of their autoregressive index to four traditional repeat sales indices in terms of predictive ability. 
-
-In order to evaluate the indices, the transactions can be divided into two subsets: the training and the testing sets. These subsets can be separated either in time series (e.g. after a cut-off date) or randomly (e.g. the uniform distribution). The training set is used to estimate each of the index methodologies and the estimated coefficients are then used to create the predicted transaction prices in the testing set. Performance measures (such as the MAE and RMSE) can be used to examine the difference between the observed and predicted transaction prices, based on the coefficient estimates of the training set. This provides information on how well the models do when applied at the micro level. Predictions also provide a better quantitative measure of the effectiveness of the index in describing market trends. Table 6 reports the results for this metric. The ps-RS methods have RMSE values... 
 
 ##Compared to international art price indices (Artprice)
 This section will compare the estimated South African art price indices to art price indices available for other countries over the sample period. Renneboog & Spaenjers (2014) examined the extent to which art prices generated in different auction markets moved together since the early 1970s. To investigate the co-movement between the art price indices, pairwise return correlation coefficients were calculated. They found that virtually all the correlations were significantly positive, although in some cases the correlations were relatively low. They also found that the average correlation between international art markets was almost identical to that between the international equity markets in their sample (0.58).
 
+```{r figure7, echo=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Comparing South African asset price indices (2000Q1=100)"}
+assets <- read.csv("Assets.csv", header=TRUE, na.strings = "", skipNul = TRUE)
+
+index_plot <- cbind(rw_indices[,c(1,7)],Date)
+index_plot <- cbind(index_plot,assets[,2:6])
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank())
+g
+```
+
+
+
 Figure 12 illustrates the art price indices for the US, UK and France, calculated by Artprice, together with the preferred South African art price index. Similar to Renneboog & Spaenjers (2014), the results indicate that despite the cross-country variation in long-term returns, art markets often displayed similar cyclical patterns. For instance, art market suffered in the early 2000s, which were recessionary periods in most developed economies. The South African art market seems to be more volatile, with higher increases and steeper decreases. 
+
+```{r figure8, echo=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Comparing art price indices (2000Q1=100)"}
+#Compared to other art pices
+index_plot <- cbind(rw_indices[,c(1,7)],Date)
+index_plot <- cbind(index_plot,assets[,7:9])
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank())
+g
+```
 
 ##Coclusion
 We have looked at a number of methodologies used to estimate real asset price indices. We have tried a new method for the art market. We have assessed which methods produce the best indices.
@@ -750,7 +833,140 @@ A number of studies have used this method to investigate bubbles in a number of 
 ##Bubble Detection Results
 This section tests whether the South African art market has exhibited bubble-like behaviour over the sample period, focusing on a specific aspect of bubbles: explosive prices. The method of @Phillips2012 will be applied to the art price indices, in order to investigate whether the series have exhibited explosive behaviour over the period, especially in the run-up to the financial crisis. As explained above, this entails the recursive estimation of an autoregressive model, varying the sample over a feasible range of windows, and testing the hypothesis of explosive behaviour in the art price indices.
 
+```{r bubbles, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
+#test for whether we should include a drift or trend term
+y <- all_indices[,5]
+toets <- ur.df(y, type= "none", lags = 4, selectlags = c("AIC"))
+toets <- ur.df(y, type= "drift", lags = 4, selectlags = c("AIC"))
+toets <- ur.df(y, type= "trend", lags = 4, selectlags = c("AIC"))
+summary(toets)
+#indicate dat daar nie 'n drift of trend component hoef te wees nie.
 
+#---------------------------------------------------------------------------------
+#Get test statistics
+y_indices <- all_indices
+bubble.nc <- list()
+for(i in 1:ncol(y_indices)) {
+    #bubble1 <- numeric()
+    bubble <- numeric()
+    for(j in 12:62) {
+        y <- y_indices[1:j,i]
+        #toets1 <- adf.test(y, alternative = "explosive", k=4)
+        #bubble1 <- rbind(bubble1,toets1$statistic)
+        toets <- ur.df(y, type= "none", lags = 4, selectlags = c("AIC"))
+        #toets <- ur.df(y, type= "drift", lags = 4, selectlags = c("AIC"))
+        #toets <- ur.df(y, type= "trend", lags = 4, selectlags = c("AIC"))
+        bubble <- rbind(bubble,toets@teststat)
+    }
+    bubble.nc[[i]] <- bubble
+}
+
+##--------------------------------------------------------------------------
+#Get critical values
+K1 <- numeric()
+K2 <- numeric()
+K3 <- numeric()
+for(j in 12:62) {
+    set.seed(123)                           #for replicability
+    reps <- 2000                            #Monte Carlo replications
+    burn <- 50                              #burn in periods: first generate a T+B sample
+                                            #To make "sure" that influence of initial values has faded
+    #obs <- 62                              #ultimate sample size
+    obs <- j
+    tstat.nc <- numeric()
+    tstat.c <- numeric()
+    tstat.ct <- numeric()
+    
+    for(i in 1:reps) {     
+        e <- rnorm(obs+burn)
+        e[1] <- 0
+        Y1 <- cumsum(e)
+        DY1 <- diff(Y1)
+        
+        y1 <- Y1[(burn+1):(obs+burn)]               #trim off burn period
+        dy1 <- DY1[(burn+1):(obs+burn)]             
+        ly1 <- Y1[burn:(obs+burn-1)] 
+        trend <- 1:obs
+        
+        EQ1 <- lm(dy1 ~ 0 + ly1)       
+        tstat.nc <- rbind(tstat.nc,summary(EQ1)$coefficients[1,3]) 
+        EQ2 <- lm(dy1 ~ ly1)            
+        tstat.c <- rbind(tstat.c,summary(EQ2)$coefficients[2,3])  
+        EQ3 <- lm(dy1 ~ lag(y1) + trend)    
+        tstat.ct <- rbind(tstat.ct,summary(EQ3)$coefficients[2,3]) 
+    }                                       
+    #hist(tstat.nc)
+    K1 <- rbind(K1,quantile(tstat.nc, probs=c(0.9,0.95,0.99)))
+    K2 <- rbind(K2,quantile(tstat.c, probs=c(0.9,0.95,0.99)))
+    K3 <- rbind(K3,quantile(tstat.ct, probs= c(0.9,0.95,0.99)))
+}
+
+##---------------------------------------------------------------------------
+#plot die test stats en critical values 
+
+bubble.test <- numeric()
+for(k in 1:7) { bubble.test <- cbind(bubble.test,bubble.nc[[k]])}
+bubble.test <- as.data.frame(bubble.test)
+#colnames(bubble.test) <- colnames(y_indices)
+bubble.test <- cbind(bubble.test,K1)
+bubble.test$Date <- c("2002Q4","2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+                      "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+                      "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+                      "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                      "2015Q1","2015Q2")
+```
+
+
+```{r figure6, echo=FALSE, message=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Full hedonic model: Test stat and critical values"}
+index_plot <- bubble.test[,c(1,8,9,10,11)]
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g
+```
+
+```{r figure7, echo=FALSE, message=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="ps-RS model(0.1%): Test stat and critical values"}
+index_plot <- bubble.test[,c(6,8,9,10,11)]
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g
+```
+
+
+```{r dates, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
+#report die bubble period datums
+datum <- data.frame()
+datums <- data.frame()
+for(i in 1:7) {
+    for(l in 1:51) {
+        if(bubble.test[l,i]>bubble.test$"95%") { 
+            datum[l,i] <- bubble.test[l,"Date"]
+        }
+    }
+    NonNAindex <- which(!is.na(datum[,i]))
+    firstNonNA <- min(NonNAindex)
+    datums[1,i] <- datum[firstNonNA,i]
+    lastNonNA <- max(NonNAindex)
+    datums[2,i] <- datum[lastNonNA,i]
+}
+
+colnames(datums) <- colnames(bubble.test[1:7])
+rownames(datums) <- c("start","end")
+datums <- t(datums)
+xt <- xtable(datums, caption="Dates of explovive behaviour")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+```
 
 #References
 

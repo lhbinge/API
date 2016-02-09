@@ -39,7 +39,7 @@ suppressMessages(library(quantmod))
 suppressMessages(library(xtable))
 
 setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art Price Index\\R Code")
-artdata <- read.csv("Auction database.csv", header=TRUE, sep=";",na.strings = "", skipNul = TRUE, 
+artdata <- read.csv("Auction database.csv", header=TRUE, sep=",",na.strings = "", skipNul = TRUE, 
                     colClasses=c("character","numeric","numeric","numeric","numeric","factor","factor","factor","character",
                                  "factor","factor","factor","character","factor","factor","factor","numeric","character",
                                  "numeric","numeric","numeric","numeric","numeric","numeric"))

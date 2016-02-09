@@ -5,7 +5,7 @@
 ##=====================##
 ## READING IN THE DATA ##
 ##=====================##
-library(zoo)
+library(zoo)            
 library(ggplot2)
 library(plyr)
 library(dplyr)
@@ -16,7 +16,7 @@ library(quantreg)
 library(McSpatial)
 library(quantmod)
 library(xtable)
-
+library(scales)
 
 #setwd("C:/Users/Laurie/OneDrive/Documents/BING/METRICS/PhD Proposal Readings/Art Price Index")
 setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art Price Index\\R Code")
@@ -26,7 +26,7 @@ setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art 
 #library(xlsx)
 #artdata <- read.xlsx("Auction database.xlsx",sheetIndex=1,header=TRUE)
 
-artdata <- read.csv("Auction database.csv", header=TRUE, sep=";",na.strings = "", skipNul = TRUE, 
+artdata <- read.csv("Auction database.csv", header=TRUE, sep=",",na.strings = "", skipNul = TRUE, 
                     colClasses=c("character","numeric","numeric","numeric","numeric","factor","factor","factor","character",
                                  "factor","factor","factor","character","factor","factor","factor","numeric","character",
                                  "numeric","numeric","numeric","numeric","numeric","numeric"))
@@ -55,8 +55,8 @@ artdata$lnarea <- log(artdata$area)
 artdata$lnarea2 <- artdata$lnarea*artdata$lnarea
 
 #artdata$lnsculpt_area <- 0
-#artdata$lnsculpt_area[na.omit(artdata$med_code==7)] <- artdata$lnarea   #inteaction term: sculptures often only reported with 1 dimension (height)
-artdata$lnsculpt_area <- ifelse(artdata$med_code=="Sculpture", artdata$lnarea, 0)
+#artdata$lnsculpt_area[na.omit(artdata$med_code==7)] <- artdata$lnarea   
+artdata$lnsculpt_area <- ifelse(artdata$med_code=="Sculpture", artdata$lnarea, 0)   #inteaction term: sculptures often only reported with 1 dimension (height)
 
 artdata$counter <- as.numeric(artdata$timedummy)
 
@@ -84,24 +84,6 @@ rankings$n <- NULL
 #rankings$rank_all <- factor(rankings$rank_all, labels=c)
 #artdata <- merge(artdata, tel, by.x="artist", by.y="artist")
 
-##Rank by Rolling 5-year window
-for(i in 1:11) {
-    teller <- 1998+i
-    som <- count(artdata[(artdata$year>teller & artdata$year<(teller+6)),], artist)
-    som$rank_new <- dense_rank(desc(som$n))  
-    # the alternative is to rank by row_number or min_rank
-    som$n <- NULL
-    colnames(som) <- c("artist", paste0("rank_", i))
-    rankings <- merge(rankings, som, by.x="artist", by.y="artist",all.x=TRUE)
-}
-#Rank Update
-som <- count(artdata[(artdata$counter>42 & artdata$counter<63),], artist)
-som$rank_new <- dense_rank(desc(som$n))  # rank by equivalent to rank(ties.method = "first")
-# the alternative is to rank by row_number or min_rank
-som$n <- NULL
-colnames(som) <- c("artist", "rank_update")
-rankings <- merge(rankings, som, by.x="artist", by.y="artist",all.x=TRUE)
-
 ##Rank by Annual Volume
 for(i in 1:16) {
     teller <- 1999+i
@@ -123,6 +105,24 @@ for(i in 1:8) {
     colnames(som) <- c("artist", paste0("rank_a", i))
     rankings <- merge(rankings, som, by.x="artist", by.y="artist",all.x=TRUE)
 }    
+
+##Rank by Rolling 5-year window
+for(i in 1:11) {
+    teller <- 1998+i
+    som <- count(artdata[(artdata$year>teller & artdata$year<(teller+6)),], artist)
+    som$rank_new <- dense_rank(desc(som$n))  
+    # the alternative is to rank by row_number or min_rank
+    som$n <- NULL
+    colnames(som) <- c("artist", paste0("rank_", i))
+    rankings <- merge(rankings, som, by.x="artist", by.y="artist",all.x=TRUE)
+}
+#Rank Update
+som <- count(artdata[(artdata$counter>44 & artdata$counter<65),], artist)
+som$rank_new <- dense_rank(desc(som$n))  # rank by equivalent to rank(ties.method = "first")
+# the alternative is to rank by row_number or min_rank
+som$n <- NULL
+colnames(som) <- c("artist", "rank_update")
+rankings <- merge(rankings, som, by.x="artist", by.y="artist",all.x=TRUE)
 
 artdata <- merge(artdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
 
@@ -159,6 +159,7 @@ g <- ggplot(artplot, aes(x=Group.1, y=x,fill=Group.2))
 g <- g + geom_bar(stat="identity")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + scale_fill_discrete(name="Auction House")
+g <- g + scale_y_continuous(labels=comma)
 g <- g + ylab("Turnover (Sum of Hammer Price)")
 g <- g + xlab("Date")
 g
@@ -432,6 +433,8 @@ for(i in 1:(max(artdata$rank_total))) {
 artdata$reputation <- as.numeric(unlist(artdata$reputation))
 artdata$lnrep <- log(artdata$reputation)
 
+write.csv(artdata, file="artdata_lnrep.csv")
+
 g <- ggplot(artdata, aes(x=lnrep, y=lnprice))
 g <- g + geom_point(size = 2, alpha = 0.5, aes(colour = med_code))
 g <- g + geom_smooth()
@@ -471,11 +474,11 @@ g <- g + theme(legend.title=element_blank())
 g
 
 
-hedonic_indices <- rep_rolling[,c(1,2)]
-colnames(hedonic_indices) <- c("Date","Rep_Full")
-hedonic_indices <- cbind(hedonic_indices,RepAdjacent_1y=rep_overlap1[,19])
-hedonic_indices <- cbind(hedonic_indices,RepAdjacent_2y=rep_overlap2[,11])
-hedonic_indices <- cbind(hedonic_indices,RepRolling=rep_rolling[,15])
+hedonic_indices <- rep_overlap1[,c(1,2)]
+colnames(hedonic_indices) <- c("Date","Hedonic_Full")
+hedonic_indices <- cbind(hedonic_indices,Adjacent_1y=rep_overlap1[,19])
+hedonic_indices <- cbind(hedonic_indices,Adjacent_2y=rep_overlap2[,11])
+hedonic_indices <- cbind(hedonic_indices,Rolling=rep_rolling[,15])
 
 #png(file = "Reputation.png", width=600,height=360)
 index_plot <- melt(hedonic_indices, id="Date")  # convert to long format
@@ -488,6 +491,12 @@ g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
 g
 #dev.off()
+
+library(lmtest)
+resettest(model_all,power=2:3,type="fitted")
+resettest(model_all,power=2:3,type="regressor")
+
+
 
 ##Re-weighted to 2000=100
 hedonic_rew <- hedonic_indices
@@ -656,8 +665,10 @@ naive_index <- aggregate(artdata$price, by=list(artdata$timedummy), FUN=median, 
 naive_index$index <- naive_index$x
 #naive_index$index <- naive_index$index/naive_index2[1,3]*100
 naive_index$index <- naive_index$index/naive_index[1,2]*100
+naive_index$index <- as.numeric(naive_index$index)
+colnames(naive_index) <- c("Date","Median","Index_Naive")
 
-index_plot <- rolling[,c(1,2,15)]
+index_plot <- naive_index[,c(1,3)]
 index_plot <- cbind(index_plot,Index_Adjacent=overlap[,19])
 #index_plot <- cbind(index_plot,Index_Naive=naive_index[2:62,3])
 index_plot <- cbind(index_plot,Index_Naive=naive_index[2:62,3])
@@ -674,9 +685,11 @@ g
 #---------------
 #Chained indices
 #---------------
-strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist), FUN=median)
+#get quantity and median price per group per quarter
+strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist), FUN=mean)
 strat_q <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist), FUN=sum)
 strat_q$x <- strat_q$x/strat_p$x
+strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist), FUN=median)
 
 #source("chain.R")
 
@@ -685,13 +698,14 @@ chain <- function(strat_p, strat_q, kwartaal1,kwartaal2) {
     strat_q1 <- subset(strat_q, strat_q$Group.1==kwartaal1)
     strat_p2 <- subset(strat_p, strat_p$Group.1==kwartaal2)
     strat_q2 <- subset(strat_q, strat_q$Group.1==kwartaal2)
+    #get sample of median prices and quantities for specific artist for the two quarters
     strat_pc <- merge(strat_p1, strat_p2, by="Group.2")
     strat_qc <- merge(strat_q1, strat_q2, by="Group.2")
     #strat_p2 <- subset(strat_p2, strat_p2$Group.2 %in% strat_p1$Group.2)
     
-    #Laspeyres
+    #Laspeyres (keeps quantity weights fixed at base)
     Lasp <- sum(strat_pc$x.y*strat_qc$x.x,na.rm=TRUE)/sum(strat_pc$x.x*strat_qc$x.x,na.rm=TRUE)
-    #Paasche
+    #Paasche (keeps quantity weights fixed at end)
     Paas <- sum(strat_pc$x.y*strat_qc$x.y,na.rm=TRUE)/sum(strat_pc$x.x*strat_qc$x.y,na.rm=TRUE)
     return(c(Lasp,Paas))
 }
@@ -701,18 +715,18 @@ lys <- c("2000 Q1","2000 Q2","2000 Q3","2000 Q4","2001 Q1","2001 Q2","2001 Q3","
          "2006 Q1","2006 Q2","2006 Q3","2006 Q4","2007 Q1","2007 Q2","2007 Q3","2007 Q4","2008 Q1","2008 Q2","2008 Q3","2008 Q4",
          "2009 Q1","2009 Q2","2009 Q3","2009 Q4","2010 Q1","2010 Q2","2010 Q3","2010 Q4","2011 Q1","2011 Q2","2011 Q3","2011 Q4",
          "2012 Q1","2012 Q2","2012 Q3","2012 Q4","2013 Q1","2013 Q2","2013 Q3","2013 Q4","2014 Q1","2014 Q2","2014 Q3","2014 Q4",
-         "2015 Q1","2015 Q2")
+         "2015 Q1","2015 Q2","2015 Q3","2015 Q4")
 
 ketting <- chain(strat_p,strat_q,lys[1],lys[2])
 ketting <- rbind(ketting,chain(strat_p,strat_q,lys[2],lys[3]))
-for(i in 3:61) {
+for(i in 3:63) {
     ketting <- rbind(ketting,chain(strat_p,strat_q,lys[i],lys[(i+1)]))
 }
 
 ketting <- as.data.frame(ketting)
-ketting$V3 <- sqrt(ketting[,1]*ketting[,2])
+ketting$V3 <- sqrt(ketting[,1]*ketting[,2])  #Fisher index is the geometric mean
 ketting$V4[1] <- ketting$V3[1]
-for(i in 2:61) {
+for(i in 2:63) {
     ketting$V4[i] <- ketting$V4[(i-1)]*ketting$V3[i]
 }
 ketting$V4 <- ketting$V4*100
@@ -731,46 +745,50 @@ g
 
 #------------------------------
 #Stratify by artist and medium
-
-strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist, artdata$med_code), FUN=median)
+#get quantity and median price per group per quarter
+strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist, artdata$med_code), FUN=mean)
 strat_q <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist, artdata$med_code), FUN=sum)
-strat_q$x <- strat_q$x/strat_p$x
-
-#source("chain2.R")
+strat_q$x <- strat_q$x/strat_p$x        #the count q
+strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist, artdata$med_code), FUN=median)
 
 chain2 <- function(strat_p, strat_q, kwartaal1,kwartaal2) {
     strat_p1 <- subset(strat_p, strat_p$Group.1==kwartaal1)
     strat_q1 <- subset(strat_q, strat_q$Group.1==kwartaal1)
     strat_p2 <- subset(strat_p, strat_p$Group.1==kwartaal2)
     strat_q2 <- subset(strat_q, strat_q$Group.1==kwartaal2)
+    #get sample of median prices and quantities for specific artist for the two quarters
     strat_pc <- merge(strat_p1, strat_p2, by=c("Group.2","Group.3"))
     strat_qc <- merge(strat_q1, strat_q2, by=c("Group.2","Group.3"))
-    #strat_p2 <- subset(strat_p2, strat_p2$Group.2 %in% strat_p1$Group.2)
-    
-    #Laspeyres
+    #Laspeyres (keeps quantity weights fixed at base)
     Lasp <- sum(strat_pc$x.y*strat_qc$x.x,na.rm=TRUE)/sum(strat_pc$x.x*strat_qc$x.x,na.rm=TRUE)
-    #Paasche
+    #Paasche (keeps quantity weights fixed at end)
     Paas <- sum(strat_pc$x.y*strat_qc$x.y,na.rm=TRUE)/sum(strat_pc$x.x*strat_qc$x.y,na.rm=TRUE)
     return(c(Lasp,Paas))
 }
 
-ketting2 <- chain2(strat_p,strat_q,lys[1],lys[2])
-ketting2 <- rbind(ketting2,chain2(strat_p,strat_q,lys[2],lys[3]))
-for(i in 3:61) {
-    ketting2 <- rbind(ketting2,chain2(strat_p,strat_q,lys[i],lys[(i+1)]))
+datum <- c("2000 Q1","2000 Q2","2000 Q3","2000 Q4","2001 Q1","2001 Q2","2001 Q3","2001 Q4","2002 Q1","2002 Q2","2002 Q3","2002 Q4",
+           "2003 Q1","2003 Q2","2003 Q3","2003 Q4","2004 Q1","2004 Q2","2004 Q3","2004 Q4","2005 Q1","2005 Q2","2005 Q3","2005 Q4",
+           "2006 Q1","2006 Q2","2006 Q3","2006 Q4","2007 Q1","2007 Q2","2007 Q3","2007 Q4","2008 Q1","2008 Q2","2008 Q3","2008 Q4",
+           "2009 Q1","2009 Q2","2009 Q3","2009 Q4","2010 Q1","2010 Q2","2010 Q3","2010 Q4","2011 Q1","2011 Q2","2011 Q3","2011 Q4",
+           "2012 Q1","2012 Q2","2012 Q3","2012 Q4","2013 Q1","2013 Q2","2013 Q3","2013 Q4","2014 Q1","2014 Q2","2014 Q3","2014 Q4",
+           "2015 Q1","2015 Q2","2015 Q3","2015 Q4")
+
+ketting2 <- chain2(strat_p,strat_q,datum[1],datum[2])
+ketting2 <- rbind(ketting2,chain2(strat_p,strat_q,datum[2],datum[3]))
+for(i in 3:63) {
+    ketting2 <- rbind(ketting2,chain2(strat_p,strat_q,datum[i],datum[(i+1)]))
 }
 ketting2 <- as.data.frame(ketting2)
-ketting2$V3 <- sqrt(ketting2[,1]*ketting2[,2])
-ketting2$V4[1] <- ketting2$V3[1]
-for(i in 2:61) {
+ketting2$V3 <- sqrt(ketting2[,1]*ketting2[,2])  #Fisher index is the geometric mean
+ketting2$V4[1] <- ketting2$V3[1]*100
+for(i in 2:63) {                                #use the growth rates to generate the index
     ketting2$V4[i] <- ketting2$V4[(i-1)]*ketting2$V3[i]
 }
-ketting2$V4 <- ketting2$V4*100
+ketting2$Date <- as.factor(datum[-1])
+colnames(ketting2) <- c("Las","Paas","Fisher","Index_Fisher","Date")
 
-index_plot <- rolling[,c(1,2)]
-index_plot <- cbind(index_plot,Index_Naive=naive_index[2:62,3])
-index_plot <- cbind(index_plot,Index_Fish=ketting$V3)
-index_plot <- cbind(index_plot,Index_Fish2=ketting2$V3)
+index_plot <- merge(ketting2, naive_index, by.x="Date", by.y="Date",all.x=TRUE)
+index_plot <- index_plot[,c(1,5,7)]
 index_plot <- melt(index_plot, id="Date")  # convert to long format
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 3) 
@@ -778,30 +796,34 @@ g <- g + geom_line()
 g <- g + ylab("Index")
 g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
 g
+
 
 #------------------------------
 #Fixed base
 
-strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist), FUN=median)
+strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist), FUN=mean)
 strat_q <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist), FUN=sum)
 strat_q$x <- strat_q$x/strat_p$x
+strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist), FUN=median)
 
 source("chain.R")
 ketting.f1 <- chain(strat_p,strat_q,lys[1],lys[2])
-for(i in 3:62) {
+for(i in 3:64) {
     ketting.f1 <- rbind(ketting.f1,chain(strat_p,strat_q,lys[1],lys[i]))
 }
-ketting.f2 <- chain(strat_p,strat_q,lys[1],lys[62])
-for(i in 2:61) {
-    ketting.f2 <- rbind(ketting.f2,chain(strat_p,strat_q,lys[i],lys[62]))
+ketting.f2 <- chain(strat_p,strat_q,lys[1],lys[64])
+for(i in 2:63) {
+    ketting.f2 <- rbind(ketting.f2,chain(strat_p,strat_q,lys[i],lys[64]))
 }
 
 ketting.f1 <- as.data.frame(ketting.f1)
 ketting.f2 <- as.data.frame(ketting.f2)
 ketting3 <- as.data.frame(cbind(ketting.f1$V1,ketting.f2$V2))
 ketting3$V3 <- sqrt(ketting3[,1]*ketting3[,2])
-ketting3$V3 <- ketting3$V3*100
+ketting3$V4 <- ketting3$V3*100
+
 
 index_plot <- rolling[,c(1,2)]
 index_plot <- cbind(index_plot,Index_Naive=naive_index[2:62,3])
@@ -894,8 +916,7 @@ g
 #check for duplicates (how many)
 sum(duplicated(artdata[,c("artist","title","med_code","area","dum_signed","dum_dated")]))
 
-allDup <- function (value)
-{
+allDup <- function (value)  { #identify duplicated values
     duplicated(value) | duplicated(value, fromLast = TRUE)
 }
 rsartdata <- artdata[allDup(artdata[,c("artist","title","med_code","area","dum_signed","dum_dated")]),]
@@ -903,11 +924,19 @@ rsartdata <- artdata[allDup(artdata[,c("artist","title","med_code","area","dum_s
 rsartdata <- transform(rsartdata, id = as.numeric(interaction(artist,factor(title),med_code,factor(area),factor(dum_signed),
                                                               factor(dum_dated), drop=TRUE)))
 
-repdata <- repsaledata(rsartdata$lnprice,rsartdata$counter,rsartdata$id)
+repdata <- repsaledata(rsartdata$lnprice,rsartdata$counter,rsartdata$id)    #transform the data to sales pairs
 repeatsales <- repsale(repdata$price0,repdata$time0,repdata$price1,repdata$time1,mergefirst=2,
-                       graph=TRUE,graph.conf=TRUE,conf=.95)
+                       graph=TRUE,graph.conf=TRUE,conf=.95)                 #generate the repeat sales index
 repeatsales_index <- exp(as.data.frame(repeatsales$pindex))*100
 
+repeatsales_index$Date <- c("2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q4",
+                            "2003Q1","2003Q2","2003Q4","2004Q1","2004Q2","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+                            "2006Q1","2006Q2","2006Q3","2006Q4","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+                            "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+                            "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                            "2015Q1","2015Q2","2015Q3","2015Q4")
+
+write.csv(rsartdata, "rsartdata.csv")
 ##------------------------------------------------------------------
 ##--------------- Pseudo Repeat Sales ------------------------------
 ##------------------------------------------------------------------
@@ -921,21 +950,21 @@ list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","
                     "nr_works","timedummy")
 expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
 
-ps.RS <- function(threshold) {
+ps.RSsample <- function(threshold) {
     teller <-0
     repdata <- data.frame()
-    rartdata <- subset(artdata,artdata$rank_all<max(artdata$rank_all,na.rm=TRUE))
+    rartdata <- subset(artdata,artdata$rank_all<max(artdata$rank_all,na.rm=TRUE))  #exclude artists with one sale
     keep <- c("lnprice","artist","title","lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
               "nr_works","timedummy","counter")
     rartdata <- rartdata[,names(rartdata) %in% keep]
     rartdata <- rartdata[complete.cases(rartdata),]  
 
-    ## Rank total again for new sample
+    #Rank total again for new sample
     rankings <- count(rartdata, artist)
     rankings$rank_total <- row_number(desc(rankings$n))
     rartdata <- merge(rartdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
     
-    for(k in 1:max(rartdata$rank_total)) { #max(rartdata$rank_total)
+    for(k in 1:max(rartdata$rank_total)) { 
         modeldata <- subset(rartdata, rartdata$rank_total==k)
         modeldata$med_code <- factor(modeldata$med_code)
         modeldata$ah_code <- factor(modeldata$ah_code)
@@ -943,52 +972,53 @@ ps.RS <- function(threshold) {
         modeldata$dum_dated <- factor(modeldata$dum_dated)
         modeldata$timedummy <- factor(modeldata$timedummy)
     
-    #modeldata <- cbind(modeldata,model.matrix(~modeldata$med_code))
+        #if there is only one factor level => make it a zero
         if(length(levels(modeldata$med_code))==1)   { modeldata$med_code <- as.numeric(0) }
         if(length(levels(modeldata$ah_code))==1)    { modeldata$ah_code <- as.numeric(0) }
         if(length(levels(modeldata$dum_signed))==1) { modeldata$dum_signed <- as.numeric(0) }
         if(length(levels(modeldata$dum_dated))==1)  { modeldata$dum_dated <- as.numeric(0)   }
     
-        if(length(levels(modeldata$timedummy))!=1) { #modeldata$timedummy <- as.numeric(0)   
+        if(length(levels(modeldata$timedummy))!=1) {   #if there were sales in more than one period
             model <- lm(expl_vars, data=modeldata, na.action = na.exclude)
             newdata <- modeldata
-            newdata$timedummy <- newdata$timedummy[1]
-            modeldata <- cbind(modeldata,fitted=predict.lm(model,newdata=newdata))
+            newdata$timedummy <- newdata$timedummy[1]  #turn time dummy off by making them all the same
+            modeldata <- cbind(modeldata,fitted=predict.lm(model,newdata=newdata))  #add predicted value
 
-            modeldata$id <- 0
-            for(i in 1:nrow(modeldata)) {
+            for(i in 1:nrow(modeldata)) {  #give items below threshold the same id
+                modeldata$id <- 0
                 teller <- teller + 1
-                if(modeldata$id[i]==0) {
-                    modeldata$id[i] <- teller
-                    medium <- modeldata$med_code[i]
-                    modeldata$distance <- abs(modeldata$fitted[i]-modeldata$fitted)/modeldata$fitted[i]
-                    if(threshold=="nearest"){
-                        modeldata$id[(modeldata$distance==min(modeldata$distance,na.rm=TRUE) & modeldata[,"id"]==0 & modeldata[,"med_code"]==medium)] <- teller
-                    } else {
-                        modeldata$id[(modeldata$distance<threshold & modeldata[,"id"]==0 & modeldata[,"med_code"]==medium)] <- teller
-                    } 
-                }
+                modeldata$id[i] <- teller
+                medium <- modeldata$med_code[i]
+                modeldata$distance <- abs(modeldata$fitted[i]-modeldata$fitted)  #distance metric
+                if(threshold=="nearest"){  #nearest match if same medium
+                    modeldata$id[(modeldata$distance==min(modeldata$distance[modeldata[,"id"]==0 & modeldata[,"med_code"]==medium],na.rm=TRUE))] <- teller
+                } else {                   #if same medium and distance smaller than threshold
+                    modeldata$id[(modeldata$distance<threshold & modeldata[,"med_code"]==medium)] <- teller
+                } 
+                repdata <- rbind(repdata,modeldata[modeldata[,"id"]!=0,])
             }
-        repdata <- rbind(repdata,modeldata)
         }
     }
-
+    #transform the data to pseudo repeat sales pairs (for all attributes)
     fullrep <- cbind(repsaledata(repdata$lnprice,repdata$counter,repdata$id),
-                 repsaledata(repdata$lnarea,repdata$counter,repdata$id)[,4:5],
-                 repsaledata(repdata$med_code,repdata$counter,repdata$id)[,4:5],
-                 repsaledata(repdata$ah_code,repdata$counter,repdata$id)[,4:5],
-                 repsaledata(repdata$lnsculpt_area,repdata$counter,repdata$id)[,4:5],
-                 repsaledata(repdata$dum_signed,repdata$counter,repdata$id)[,4:5],
-                 repsaledata(repdata$dum_dated,repdata$counter,repdata$id)[,4:5],
-                 repsaledata(repdata$nr_works,repdata$counter,repdata$id)[,4:5])
+                     repsaledata(repdata$lnarea,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$med_code,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$ah_code,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$lnsculpt_area,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$dum_signed,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$dum_dated,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$nr_works,repdata$counter,repdata$id)[,4:5])
 
     colnames(fullrep) <- c("id","time0","time1","price0","price1","area0","area1","med_code0","med_code1",
-                        "ah_code0","ah_code1","sculpt0","sculpt1","sign0","sign1","date0","date1",
-                        "nr0","nr1")
+                           "ah_code0","ah_code1","sculpt0","sculpt1","sign0","sign1","date0","date1",
+                           "nr0","nr1")
+}
 
-    repeatsales <- repsale(fullrep$price0,fullrep$time0,fullrep$price1,fullrep$time1,mergefirst=2,
-                            graph=TRUE,graph.conf=TRUE,conf=.95)
-    sps.RS_index <- exp(as.data.frame(repeatsales$pindex))*100
+ps.RS <- function(fullrep) {
+    #repeatsales <- repsale(fullrep$price0,fullrep$time0,fullrep$price1,fullrep$time1,mergefirst=2,
+    #                        graph=TRUE,graph.conf=TRUE,conf=.95)
+    #sps.RS_index <- exp(as.data.frame(repeatsales$pindex))*100
+
 
     dy <- fullrep$price1 - fullrep$price0
     timevar <- levels(factor(c(fullrep$time0, fullrep$time1)))
@@ -1043,9 +1073,9 @@ ps.RS <- function(threshold) {
     return(ps.RS_results)
 }
 
-ps.RS_1 <- ps.RS(0.00005)
-ps.RS_2 <- ps.RS(0.00001)
-ps.RS_n <- ps.RS("nearest")
+ps.RS_1 <- ps.RS(ps.RSsample(0.0001))
+ps.RS_2 <- ps.RS(ps.RSsample(0.0005))
+ps.RS_n <- ps.RS(ps.RSsample("nearest"))
 
 ##WAT VAN WEIGHTED O GENERALISED LEAST SQUARES (GLS or WLS)??
 ##SIEN OF REPEAT SALES DIT DOEN
@@ -1061,12 +1091,7 @@ rep_indices$Date <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","200
                       "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
                       "2015Q1","2015Q2")
 
-repeatsales_index$Date <- c("2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q4",
-                            "2003Q1","2003Q2","2003Q4","2004Q1","2004Q2","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
-                            "2006Q1","2006Q2","2006Q3","2006Q4","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
-                            "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
-                            "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
-                            "2015Q1","2015Q2")
+
 rep_indices <- merge(rep_indices, repeatsales_index, by="Date", all=TRUE)
 
 rep_indices <- cbind(rep_indices,ps.RS_2[,2])
@@ -1433,10 +1458,12 @@ summary(model_100)$coefficients
 ##============##
 ## EVALUATION ##
 ##============##
+#hedonic_indices <- read.csv("hedonic_indices.csv")[,-1]
+#rep_indices <- read.csv("rep_indices.csv")[,-1]
 
-all_indices <- cbind(hedonic_indices[-1],rep_indices[,c(-1,-2)])
+all_indices <- cbind(hedonic_indices[-1],rep_indices[,c(-1,-3)])
 all_indices <- rbind(c(seq(100,100, length.out = ncol(rep_indices))),all_indices)
-all_indices[2,5] <- 100
+all_indices[2,7] <- 100
 
 rw_indices <- all_indices  ##Re-weighted to 2000=100
 for(i in 1:7) {
@@ -1523,9 +1550,22 @@ for(i in 1:7) {
 ac.1 <-numeric()
 eval <- data.frame()
 
-vol <- apply(ts.all_indices,MARGIN=2, FUN=sd, na.rm=TRUE)
-for(i in 1:ncol(ts.all_indices)) {
-    ac.1[i] <- acf(ts.all_indices,na.action = na.pass, plot = FALSE, lag.max = 1)$acf[,,i][2,i]
+areturns <- data.frame()
+for(i in 1:ncol(ts.all_indices)) { 
+    areturns <- cbind(areturns, annualReturn(ts.all_indices[,i], type='arithmetic'))
+}
+
+returns <- all_indices
+for(i in 1:ncol(all_indices)) {
+    for(j in 2:nrow(all_indices)) {
+        returns[j,i] <- all_indices[j,i]/all_indices[j-1,i] - 1
+    }
+}
+returns <- returns[-1,]
+
+vol <- apply(returns,MARGIN=2, FUN=sd, na.rm=TRUE)
+for(i in 1:ncol(returns)) {
+    ac.1[i] <- acf(returns,na.action = na.pass, plot = FALSE, lag.max = 1)$acf[,,i][2,i]
 }
 eval <- cbind(vol=vol,ac.1=ac.1)
 xt <- xtable(eval, caption="Smoothness Indicators")

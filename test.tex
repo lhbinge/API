@@ -1,0 +1,58 @@
+\documentclass[article]{jss}
+\usepackage[utf8]{inputenc}
+
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+\author{
+FirstName LastName\\University/Company \And Second Author\\Affiliation
+}
+\title{A Capitalized Title: Something about a Package \pkg{foo}}
+
+\Abstract{
+The abstract of the article.
+}
+
+\Plainauthor{FirstName LastName, Second Author}
+\Plainkeywords{hedonic {[}keywords, not capitalized, Java{]}}
+
+%% publication information
+%% \Volume{50}
+%% \Issue{9}
+%% \Month{June}
+%% \Year{2012}
+\Submitdate{}
+%% \Acceptdate{2012-06-04}
+
+\Address{
+    }
+
+\usepackage{amsmath}
+
+\begin{document}
+
+\section{Introduction}\label{introduction}
+
+This template demonstrates some of the basic latex you'll need to know
+to create a JSS article.
+
+\subsection{Code formatting}\label{code-formatting}
+
+Don't use markdown, instead use the more precise latex commands:
+
+\section{R code}\label{r-code}
+
+Can be inserted in regular R markdown blocks.
+
+\begin{CodeChunk}
+\begin{CodeInput}
+x <- 1:10
+x
+\end{CodeInput}
+\begin{CodeOutput}
+ [1]  1  2  3  4  5  6  7  8  9 10
+\end{CodeOutput}
+\end{CodeChunk}
+
+\end{document}
+

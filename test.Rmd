@@ -1,0 +1,483 @@
+---
+output: 
+    pdf_document:
+        fig_caption: yes
+        number_sections: true
+fontsize: 11pt
+geometry: margin=1in
+bibliography: References.bib
+
+header: 
+    \documentclass[11pt]{article}
+    \usepackage[authoryear, round, colon]{natbib} 		
+    \bibliographystyle{chicago}
+    \usepackage[a4paper, total={5.5in, 9in}]{geometry} 	%Page layout
+    \setlength{\parindent}{2em} 						%Paragraph indentation
+    \setlength{\parskip}{0.5em} 						%Paragraph spacing
+    \usepackage[defaultlines=2,all]{nowidow} 			%Widow&orphan control
+    \usepackage[UKenglish]{babel} 						%Hyphenantion
+    \usepackage{amsmath,array}							%Equations
+    \usepackage{booktabs, multicol, multirow}			%Tables
+    \usepackage{rotating}								%Landscape tables
+    \usepackage[margin=1em,font=small,labelfont=sc,labelsep=colon,justification=justified]{caption} %Caption format
+    \usepackage{xcolor}									%Colors
+    \usepackage{graphicx}								%Graphs
+    \usepackage[autostyle]{csquotes}					%Quotes
+    \usepackage[compact]{titlesec}						%Reduce whitespace around headings
+    \usepackage{hyperref}								%Links in table of contents
+    \hypersetup{colorlinks, citecolor=black, filecolor=black, linkcolor=black, urlcolor=black}
+    \usepackage{flafter}								%Doesn't allow placement of figures before they are referenced in the text
+    \renewcommand{\topfraction}{0.9}					% max fraction of floats at top
+    \renewcommand{\bottomfraction}{0.8}					% max fraction of floats at bottom
+    \setcounter{topnumber}{2}
+    \setcounter{bottomnumber}{2}
+    \setcounter{totalnumber}{4}
+    \usepackage{titlesec}
+    \titleformat*{\section}{\Large\scshape}
+    \titleformat*{\subsection}{\large\scshape}
+    \titleformat*{\subsubsection}{\normalsize\itshape}
+    \titleformat*{\paragraph}{\normalsize\itshape}
+    \titleformat*{\subparagraph}{\normalsize\itshape}
+    \graphicspath{{./Figures/}}
+---
+
+<!-- maketile -->
+\begin{center}
+\Large\scshape{Art Price Index} \\ 
+\vspace{1em}
+\large\normalfont{Laurie Binge}\footnote{Laurie is a PhD candidate at the Department of Economics of Stellenbosch University. He wishes to thank Anna for her beautiful LaTex template.} \\
+\normalsize\textit{Stellenbosch University} \\
+\normalsize\normalfont{This draft: \today} 
+\end{center}
+
+\begin{small}
+This is an abstract for a wonderful paper. This is an abstract for a wonderful paper. This is an abstract for a wonderful paper. This is an abstract for a wonderful paper. This is an abstract for a wonderful paper. This is an abstract for a wonderful paper. This is an abstract for a wonderful paper. This is an abstract for a wonderful paper. This is an abstract for a wonderful paper. This is an abstract for a wonderful paper.
+
+\vspace{0.5em}
+\noindent{\textbf{JEL Classification:} X01, Z01, Z01} \\
+	\noindent{\textbf{Keywords:} Alternative Assets}
+\end{small}
+
+\renewcommand{\thefootnote}{\arabic{footnote}}
+
+
+#Introduction
+Contemporary African art, long seen as a niche market, has experienced a surge in popularity over the last few decades. The South African art market in particular has received a lot of attention and has grown markedly over the last two decades, both in terms of the number of transactions and total turnover [@Fedderke2014]. Artworks by South African artists have reached record prices at international and local auctions, both for the country's "masters" - including Irma Stern, Walter Battiss, and JH Pierneef - and contemporary artists like William Kentridge [@Naidoo2013]. For example, in 2011 Irma Stern's *"Arab Priest"* set a world record hammer price of £2.7 million at auction (Bonhams), while *"Two Arabs"* sold for R19 million, a record for a South African auction house (Strauss & Co). 
+
+The increase in interest in South African art, both locally and abroad, has sparked a vibrant market for investors [@Naidoo2013]. This increase in the popularity of art, partly as an investment vehicle, is commensurate with international trends, where fine art has become an important asset class in its own right. In 2010 the Wall Street Journal reported that around 6% of total wealth was held in so-called passion investments, which include art, wine, antiques and jewellery. Of all these luxury goods, art is the most likely to be acquired for its potential appreciation in value [@Capgemini2010]. Passion investments, and art in particular, are interesting examples of alternative assets, as they are durable goods with investment as well as consumption characteristics [@Renneboog2014].
+
+In times of economic uncertainty there is often an increase in demand for physical assets: as these have limited supply they are often considered relatively safe in times of financial turmoil [@Warwick-Ching2013]. In addition, the demand for alternative assets is supported by their imperfect correlation with the stock market, which is thought to aid portfolio diversification. Alternative assets are also used as collateral for loans, or to take advantage of slacker regulatory and tax provisions. 
+
+To date there has been little research on the South African art market and particularly trends in art prices. It is important to analyse price movements over time in order to understand the dynamics of the market and to answer some question around the development of this market. However, accurate valuation of real alternative assets like art can be difficult. These assets are heterogeneous and often involve large transaction costs for both buyers and sellers. They are less liquid than traditional assets and have a low transaction frequency, which makes it difficult to measure the state of the overall market, as only a small part of the overall market is traded at any given time. 
+
+This paper will attempt to estimate an accurate price index for South African art. The price indices are intended to be a summary of overall price movements in the art market. The indices are then be used to try to answer the questions of whether there was a large increase in prices in the run-up to the Great Recession and whether there is evidence for the presence of a bubble in the market, as is often claimed? Section 2 provides an outline of the methodologies applied in the literature and provides a brief literature review. Section 3 looks at the available data for South Africa. Section 4 reports the results from a number of potential estimation methods. Section 5 evaluates these results and compares the indices to international art price indices. Section 7 introduces the bubble detection methodology and briefly looks at the literature. Section 8 reports the results of the bubble detection evidence. Section 9 concludes.
+
+```{r cleaning, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
+##=====================##
+## READING IN THE DATA ##
+##=====================##
+suppressMessages(library(zoo))
+suppressMessages(library(ggplot2))
+suppressMessages(library(plyr))
+suppressMessages(library(dplyr))
+suppressMessages(library(reshape2))
+suppressMessages(library(stargazer))
+suppressMessages(library(micEcon))
+suppressMessages(library(quantreg))
+suppressMessages(library(McSpatial))
+suppressMessages(library(quantmod))
+suppressMessages(library(xtable))
+
+setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art Price Index\\R Code")
+artdata <- read.csv("Auction database.csv", header=TRUE, sep=",",na.strings = "", skipNul = TRUE, 
+                    colClasses=c("character","numeric","numeric","numeric","numeric","factor","factor","factor","character",
+                                 "factor","factor","factor","character","factor","factor","factor","numeric","character",
+                                 "numeric","numeric","numeric","numeric","numeric","numeric"))
+##===================##
+## CLEANING THE DATA ##
+##===================##
+
+artdata$date <- as.Date(artdata$date)
+artdata$med_code <- factor(artdata$med_code, labels=c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut",
+                                                      "Mixed Media","Sculpture","Photography", "Other"))
+artdata$ah_code <- factor(artdata$ah_code, labels=c("5th Avenue","Ashbeys","Bernardi","Bonhams","Russell Kaplan",
+                                                    "Stephan Welz","Strauss","Christies"))
+artdata$timedummy <- factor(as.yearqtr(artdata$date, "%Y-%m-%d"))
+artdata$lnprice <- log(artdata$price)
+artdata$lnarea <- log(artdata$area)
+artdata$lnarea2 <- artdata$lnarea*artdata$lnarea
+artdata$lnsculpt_area <- ifelse(artdata$med_code=="Sculpture", artdata$lnarea, 0)
+artdata$counter <- as.numeric(artdata$timedummy)
+
+##----------------------
+##Rank Artists by Volume
+##----------------------
+#Rank by Total Volume (all)
+rankings <- count(artdata, artist)
+rankings$rank_all <- dense_rank(desc(rankings$n))    #rank by density, with no gaps (ties = equal)
+rankings$rank_total <- row_number(desc(rankings$n))  #equivalent to rank(ties.method = "first")
+rankings$n <- NULL
+
+artdata <- merge(artdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
+```
+
+#Estimation methodologies
+An accurate measure is a prerequisite to analysing the art market to try and examine whether there was evidence of a bubble. The aim of this section is to establish a range of measures to answer the questions of .
+
+The construction of price indices for real alternative asset markets is challenging for at least two reasons [@Jiang2014]. Firstly, the low frequency of trading means that only a subset of the market is traded at a given time, while the prices of non-transacted assets are unobservable. Secondly, the heterogeneity of individually unique assets means that the quality of assets sold is not constant over time. Thus, the composition of assets sold will generally differ between periods, making it difficult to compare prices over time [@Hansen2009]. Constructing an index for individually unique assets, like art, therefore requires a different approach than is used for indices of stocks, bonds and commodities. Four broad measurement techniques have been used to construct these indices [@Eurostat2013]:
+
+a)	Naïve or central tendency methods
+b)	Hedonic regressions
+c)	Repeat sales regressions
+d)	Hybrid models
+
+The following sections provide a brief introduction to these methodologies. The literature does not provide an a priori indication of the most appropriate method and, in practice, the data dictates the choice.
+
+##Central Tendency or naïve methods
+The simplest way to construct a price index is to calculate a measure of central tendency from the distribution of prices. As price distributions are generally skewed, the median is often preferred to the mean. These average measures have the advantage that they are simple and easy to construct and do not require detailed data. 
+
+However, an index based on average prices does not account for the difficulties mentioned above. For assets like artworks, naïve indices may therefore be more dependent on the mix of objects that come to market, than changes in the underlying market. For instance, if there is an increase in the share of higher quality assets, an average measure will show an increase in price, even if the prices in the market did not change [@Hansen2009]. Hence, such a measure may not be representative of the price movements of all the assets in the market. If there is a correlation between turning points in asset price cycles and compositional and quality changes, then an average could be especially inaccurate [@Eurostat2013].
+
+An improvement can be made by stratification of the data. Stratified measures control for variations in prices across different types of assets by separating the sample into subgroups according to individual characteristics such as artist and medium.[^1] Stratified measures are currently used by ABSA, FNB and Standard Bank, for instance, to construct property price indices for South Africa. However, scholarly work rarely employs central tendency indices. The repeat sales and the hedonic regression methods have dominated in the international literature. 
+
+[^1]: Ek het weergawes van hierdie indekse bereken, so ons kan hulle insluit as dit nodig is. The Fisher ideal index is often the recommended index formula, as it can be justified from several different perspectives (Eurostat, 2013). It is the geometric mean of the Laspeyres and Paasche indices. The Laspeyres index holds the quantity weights fixed in the base period, while the Paasche index holds the quantity weights fixed at the comparison period.
+
+##Hedonic regression methodology
+Artworks are heterogeneous assets, with a variety of characteristics that make them unique. The hedonic regression method recognises that the prices of heterogeneous goods can be described to some extent by their characteristics [@Eurostat2013]. In the context of art, characteristics may include physical (e.g. medium) and non-physical attributes (e.g. artist reputation). The hedonic approach estimates the value attached to each of these attributes. 
+
+The hedonic approach entails regressing the logarithm of the sales price on the relevant attributes, as well as time dummies, which capture the "pure price effect" [@Kraussl2010]. The standard hedonic model usually takes the following form: 
+
+$$\ln P_{it} =\alpha+\sum_{j=1}^z\beta_jX_{ij}+\sum_{t=0}^\tau\gamma_tD_{it}+\epsilon_{it}$$
+
+where $P_{it}$ represents the price of artwork $i$ at time $t$, $X_{ij}$  is a series of characteristics of item $i$ at time $t$, and $\beta_j$ reflects the coefficient values (implicit prices) of the attributes, $D_{it}$  is the time dummy variable, which takes the value 1 if item $i$ is sold in period $t$ and 0 otherwise, and $\epsilon_{it}$ represents the error term.
+
+The hedonic method therefore controls for quality changes by attributing implicit prices to a set of value-adding characteristics of the individual asset. Hedonic regressions control for the observable characteristics of an asset to obtain an index reflecting the price of a "standard asset" [@Renneboog2002]. It is also possible to allow the coefficients (the implicit prices assigned to characteristics) to evolve over time with the adjacent-period method [@Triplett2004]. 
+
+Thus, the hedonic approach can circumvent the problems of heterogeneity of individually unique assets, changes in composition and quality, as well as the exclusion of single-sale data (a problem with repeat sales regressions) [@Hansen2009]. However, the choice of the attributes in a hedonic regression and involves subjective judgement and is limited by data availability. If relevant variables are omitted or the functional form is incorrectly specified, it will result in omitted variable or misspecification bias, which will bias the parameter estimates and therefore the indices [@Jiang2014]. Various studies have attempted to improve upon the basic methodology. 
+
+##Repeat Sales Regression Method
+The repeat sales methodology overcomes many of the problems by tracking the repeated sale of a specific asset over time. This method aggregates sales pairs and estimates the average return on the set of assets in each period [@Kraussl2010]. The repeat sales method has often been applied in the construction of real estate indices, where there is a lack of detailed information on each sale (which is necessary for the hedonic method). 
+
+In the standard repeat sales model the dependent variable is regressed on a set of dummy variables corresponding to time periods. The coefficients are estimated only on the basis of changes in asset prices over time. The basic regression takes the following form:
+
+$$\ln\frac{P_{t+1}}{P_t} =\sum_{i=1}^t\gamma_id_{i}+\epsilon_{i}$$
+
+where $P_t$  is the purchase price for time $t$; $\gamma_i$  is the parameter to be estimated for time $i$; $d_i$  represents the monthly dummy variables (-1, 0, 1) indicating the occurrence of $P_t$; and $\epsilon_i$  is a white noise residual.
+
+The repeat sales method avoids having to correctly specify the characteristics that determine asset value (a problem with hedonic models). By only using assets that have been sold at least twice, the method controls for other factors contributing to the variation in price growth. It also has the advantage of not being data intensive, as the only information required to estimate the index is the price, the sales date and a unique identifier (e.g. the address of the property).
+
+A disadvantage of the repeat sales method is that single-sale data is discarded. This is problematic for these assets because the resale of a specific item may only occur infrequently, which reduces the total number of available observations substantially. Another problem is the possibility of sample selection bias. Assets that have traded more than once may not be representative of the entire population of assets. For example, if cheaper artworks sell more frequently than expensive artworks, but high-quality artworks appreciate faster, a repeat sales index will tend to have a downward bias [@Eurostat2013]. Several studies have investigated this source of bias and the size and direction of the bias has varied between samples.
+
+##Hybrid Models
+A hybrid model approach involves a combination of the repeat sales and hedonic approaches. The hybrid formulation exploits the control of variation inherent in repeat sales pairs and avoids the problems of possible misspecification inherent in the hedonic methodology [@Bester2010]. By combining the two methods, a hybrid approach tries to exploit all the sales data, and to address sample selection bias and inefficiency problems, in addition to the quality change problem [@Eurostat2013]. 
+
+In the context of real estate, for instance, @Case1991 used samples of single-sale and repeat-sale properties to jointly estimate price indices using generalised least squares regressions. More recently, @Guo2014 developed a "pseudo repeat sales" procedure to construct more reliable price indices for newly constructed homes. Their procedure matched the sales prices of very similar new units in order to construct a large pseudo repeat sales sample. This approach is discussed in more detail below.
+
+As mentioned, the specific methodology adopted is dependent on the data available. Art price indices tend to employ some variant of the hedonic method, due to the availability of more detailed data on characteristics and a lack of repeat sales of artworks. The following section provides a brief literature review of the estimation of art price indices. 
+
+##A Brief Literature Review
+A number of academic studies have constructed art price indices for various art markets around the world. These studies have typically been interested in risk-adjusted returns to investigate whether the art market provides potential diversification benefits for an investment portfolio. The interest in investing in art has received a large boost recently from an increase in the availability of art price data [@Campbell2009]. 
+
+These studies have typically relied on publically available auction prices.[^2] Art is also sold privately, either directly from artists or through dealers. However, dealers' sales records are generally not available, as releasing such information may be damaging to the dealer's business and dealers have an incentive to give the impression that there is high demand for their artworks. Nevertheless, it is generally accepted that auction prices set a benchmark that is also used in the private market [@Renneboog2012]. For instance, if an artwork sells for a lower price at auction than the prices offered by a dealer, buyers would likely move to another dealer or simply purchase at auction. Thus, prices for private sales are likely anchored by auction prices and are likely to be highly correlated for the same works [@Olckers2015].
+
+[^2]: Auctions account for around half of the art market according to The European Fine Art Fair Art Market Report 2014.
+
+A few studies have utilised the repeat sales method to estimate art price indices. These studies have typically relied on a very large sales database due to the infrequency of repeat sales of individual artworks. Indeed, for artworks the resale of a specific item may occur only very rarely, which might be related to the very high transaction costs involved. [@Mei2002] constructed the seminal repeat sales index of art prices for the period 1875-2000. The resulting index returns were compared to a range of assets. Their methodology is currently used to produce the Mei Moses Art Index for Beautiful Asset Advisors. [@Goetzmann2011] used a long-term repeat sales art market index to investigate the impact of equity markets and top incomes on art prices. These indices followed the [@Case1987] methodology and were based on over a million sales dating back to the 18th century.
+
+@Korteweg2013 constructed a repeat sales index based on a large database of repeat sales between 1972 and 2010. They argued that standard repeat sale indices suffer from a sample selection problem, as sales are endogenously related to asset performance. If artworks with higher price increases were more likely to trade, the index would be biased and not representative of the entire market. In periods with few sales it would be possible to observe large positive returns, even if overall values were declining. A Heckman selection model, predicting whether an artwork actually sold, was used to correct for this bias. The correction decreased the returns to an investment in art significantly.
+
+The majority of studies have used hedonic models to construct indices, due to the lack of repeat sales of artworks and the availability of information on many of their important attributes. @Anderson1974 was the first to apply a hedonic regression to art prices. More recent examples include: @Renneboog2002, who estimated an index of Belgian paintings; @Kraussl2010, who studied the prices of the top 500 artists in the world; @Kraussl2010a, who analysed the performance of art in Russia, China and India; and @Kraussl2014 who analysed art from the Middle East and Northern Africa region. 
+
+In estimating art price indices, studies typically to set up some form of selection criteria for which artists to include in the index calculation. The number of artists is constrained by the number of artist dummies that can be included in the model (i.e. degrees of freedom). A common criterion has been historical importance, measured as the frequency with which an artist was mentioned in a collection of art literature. @Kraussl2008 argued that availability and liquidity are better criteria from an investor's point of view, as the index would reflect artworks actually traded in the market. This implies that selection could be based on the number of sales, rather than historic relevance. @Kraussl2008 developed a two-step hedonic approach, which allows the use of every auction record, instead of only those auction records that belong to a sub-sample of selected artists. This approach is discussed in more detail below. 
+
+The hedonic models typically include characteristics that are relatively easily observable and quantifiable. The attributes include the artist, the auction house, the size, the medium, the theme, whether the artwork is signed, and the artist's living status @Kraussl2010a. Although omitted variables are a problem in every model, hedonic pricing is particularly suitable for luxury consumption goods, where a limited number of key characteristics often determine the willingness to pay for an item. In any case, the omitted variable bias is often small in practice [@Triplett2004; @Renneboog2012].
+
+Multi-period pooled hedonic regressions have been criticised for holding the hedonic coefficients fixed over the entire sample. The stability of the coefficients in a pooled regression can also become an issue as the number of periods expands. The adjacent-period method can deal with this by constructing a continuous time series through chaining a sequence of indices together. It allows the coefficients, and therefore the implicit prices assigned to the characteristics, to vary in each regression [@Triplett2004]. 
+
+Bought-in lots (i.e. items that do not reach the reserve price and remain unsold) are always a problem when constructing these indices. Most studies lack data on buy-ins and are forced to ignore the problem. @Collins2009 developed a hedonic index that corrected for sample selection bias from buy-ins. They argued that because auctions have high proportions of unsold lots (typically 30%-40%), price indices suffer from non-randomness in the data. A sample based only on sold lots systematically excludes "less fashionable" artworks, potentially introducing a bias in the sample of prices. A Heckman selection model was used to address this issue.[^3] The results confirmed a statistically significant sample selection problem, in line with similar studies in the property market. 
+
+[^3]: The nature of sample selection bias is different in the approaches. The repeat sales method ignores all information on single sales, such that it may not represent the population. The hedonic method only uses sold items, so that bias may arise from unsold items.
+
+###South African art price literature
+In the South African context, @Olckers2015 created a proxy for the cultural value of art by constructing an Art Critic Index based on surveying South African art literature. The auction results (1996-2012) were obtained from AuctionVault's online database. Using a hedonic model they found that cultural value was positively correlated with auction prices, i.e. the economic value of art. Interestingly, they singled out and analysed some specific artists that were outliers in this relation.
+
+@Fedderke2014 studied the relationship between South Africa's two major fine art auction houses: Strauss & Co and Stephan Welz & Co. The analysis was based on a hand-coded dataset of auction prices. They developed a theoretical framework to consider the interaction between the market leader (Strauss) and the market follower (Stephan Welz). The model predicted that the market follower would be forced to issue excessive price estimates to attract sellers, at the cost of higher buy-in rates. The predictions were tested by employing a hedonic model to construct a counterfactual for auction prices. Both direct and indirect tests confirmed the predictions of the theoretical model. 
+
+Citadel, a wealth manager, has been publishing the Citadel Art Price Index (CAPI) since 2011. The CAPI is intended to outline general trends in the South African art market. It uses an adjacent-period hedonic regression model, based on the top 100 artists in terms of sales volumes, and a 5-year rolling window estimation period [@Econex2012]. Various sub-indices are also calculated. The estimation below will build on the CAPI in order to contribute to the research on the South African art market.
+
+#South African Art Auction Data
+Auction prices are the only consistently available price data on the South African art market. This paper will therefore rely on publicly available auction prices, similar to almost all other studies estimating art price indices. As explained above, there should be a strong correlation between auction prices and private prices [@Olckers2015].
+
+Strauss & Co and Stephan Welz & Co are the two local auction houses that have handled the bulk of sales in recent years, with auctions in Cape Town and Johannesburg. Other local auction houses include Bernardi in Pretoria and Russell Kaplan in Johannesburg. Bonhams in London is the only major international auction house with a dedicated South African art department, though some competition is emerging from Sotheby's and Christie's. Bonhams has two major South African art sales a year. The auction houses follow an open ascending auction, where the winner pays the highest bid. A sale is only made if the hammer price is above the secret reserve price. Otherwise the artwork is unsold and is said to be bought in [@Fedderke2014].
+
+The indices are based on data recorded by AuctionVault. This data covers sales of South African art at 8 auction houses[^4] from the year 2000 onwards. The database includes 49,955 sales by 4,361 different artists. The following characteristics are available for each auction record: hammer price, artist name, title of work, medium, size, whether or not the artwork is signed, dated and titled, auction house, date of auction, and the number of distinct works in the lot. Like most studies, the database lacks information on buy-ins and the analysis is forced to disregard the potential sample selection problem.[^5]
+
+[^4]: These are: 5th Avenue, Ashbeys, Bernardi, Bonhams, Christies, Russell Kaplan, Stephan Welz & Co and Strauss & Co.
+
+[^5]: If the database included information on the artwork characteristics, censored regression techniques such as the Heckman selection model, could be used to look at the sample selection bias. But the dataset does not include the artworks that were bought-in, which means that it is a truncated sample. Unfortunately, truncated regression techniques cannot be performed to correct for the bias, as the cut-off points (i.e. the secret reserve prices) are different for each individual artwork and more importantly, unknown.
+
+The South African art market has grown markedly over the last decade. Figure 1 illustrates the increase in auction turnover over the sample period (2000-2015YTD) by auction house. In 2014 (the most recent full year), total sales had reached almost R300 million. 
+
+```{r figure1, echo=FALSE, cache = TRUE, fig.height=3.5, fig.width=7.5, fig.cap="Turnover (sum of hammer prices) by auction house (2000-2015YTD)"}
+artplot <- aggregate(artdata$hammer_price, by=list(artdata$year,artdata$ah_code), FUN = sum, na.rm=TRUE)
+g <- ggplot(artplot, aes(x=Group.1, y=x,fill=Group.2))
+g <- g + geom_bar(stat="identity")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + scale_fill_discrete(name="Auction House")
+g <- g + ylab("Turnover (Sum of Hammer Price)")
+g <- g + xlab("Date")
+g
+```
+
+Figure 2 illustrates the increase in the total number of sales lots over the period, as well as the movement in the median sales price.
+
+```{r figure2, echo=FALSE, cache = TRUE, fig.height=3.5, fig.width=6.5, fig.cap="Median hammer prices and total sales (lots) at auction (2000-2015YTD)"}
+artplot1 <- aggregate(artdata$hammer_price, by=list(artdata$year), length)
+artplot2 <- aggregate(artdata$hammer_price, by=list(artdata$year), FUN = median, na.rm=TRUE)
+artplot <- merge(artplot1, artplot2, by="Group.1",all.x=TRUE)
+names(artplot) <- c("Date","Total Sales","Median Price")
+artplot <- melt(artplot, id="Date") 
+g <- ggplot(artplot, aes(x=Date,value,colour=variable,fill=variable))
+g <- g + geom_bar(subset=.(variable=="Total Sales"),stat="identity")
+g <- g + geom_line(subset=.(variable=="Median Price"),size=1)
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
+g
+```
+
+Table 1 reports descriptive statistics for the hammer prices over the sample period. The mean price of R49,670 was much higher than the median of R7,000, indicating that the sample is skewed by very high prices for certain artworks.[^6]
+
+```{r table1, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+summaryfunction <- function(x) {
+    if( is.numeric(x)!=TRUE) {stop("Supplied X is not numeric")}
+    mysummary = data.frame("Min." =as.numeric(min(x,na.rm=TRUE)),"1st Qu." = quantile(x,na.rm=TRUE)[2],
+                           "Median" = median(x,na.rm=TRUE),"Mean" = mean(x,na.rm=TRUE),"3rd Qu." = quantile(x,na.rm=TRUE)[4],
+                           "Max." = max(x,na.rm=TRUE),row.names="")
+    names(mysummary) = c("Min.","1st Qu.","Median","Mean","3rd Qu.","Max.")
+    return(mysummary)
+}
+xt <- xtable(summaryfunction(artdata$hammer_price), caption="Descriptive statistics of auction hammer prices")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+```
+
+[^6]: Here we could illustrate some of the central tendency indices if we want to, in order to act as a baseline for the index comparisons. The naïve index, which is the median price for each quarter, shows a lot of variation in quarterly prices, but no clear cyclical trend emerges. The Fisher price indices are central tendency indices stratified by artist and medium. The fixed base Fisher index uses a fixed base to calculate the Laspeyres and Paasche indices (first and last quarter of the sample respectively). The other Fisher index allows the base periods to vary for each index point and the index points are then chained together. The results show a large amount of variation and no consistent picture emerges from these central tendency measures. This is probably because the artist and medium categories only capture a small portion of the variation in the quality of artworks that come to market between each period. The hedonic indices in the following section attempt to control for these quality changes by taking many more characteristics into account.
+
+#The Hedonic Model
+##Artwork characteristics
+Hedonic art price models typically include characteristics that are relatively easily observable and quantifiable. This section briefly discusses the main variables usually included in the hedonic models.[^7]
+
+[^7]: Should some of the exploratory graphs comparing prices and various variables be included?
+
+*Artist reputation*: Dummy variables for the artists are usually included in the model. It is often the case some of the artists are excluded, due to a lack of degrees of freedom. Alternatively, a reputation variable can be constructed, either from the art literature, or from the auction data itself with a procedure like @Kraussl2008 2-step hedonic approach. The models are estimated using a continuous reputation variable, as explained below. As a robustness check, the models are also estimated including all of the artist dummies except for those artists that only sold one artwork over the sample period. 
+
+*Size*: The most common variable used to describe the physical characteristics of an artwork is the size or surface area. Prices are expected to increase with size, up to the point that the work becomes too large [@Renneboog2012]. Squared values are therefore occasionally included to take non-linearities into account. @Fedderke2014 found this to be the case for the South Africa art in their sample.[^8] The models that follow use the natural logarithm of the surface area of the artwork in cm2. The models include an interaction term for sculpture size, as the size of a sculpture is usually only recorded as its height (in cm). 
+
+[^8]: The squared term is positive, however, which is contrary to expectations. It should have a negative sign, and it is not clear why this is the case. Should I still include it?
+
+*Auction house*: Dummy variables for the auction houses are also typically included. The more prominent auction houses usually have a positive effect on prices. One reason might be that the more renowned auction houses will offer higher quality work [@Kraussl2010a]. Thus, the variables might be picking up otherwise unobservable quality differences and do not necessarily reflect auction house certification [@Renneboog2012]. Different auction houses charge different commissions to both buyers and sellers. Strauss & Co reported a buyer's premium of 10%-15%, while Bonhams charged premiums of up to 25% [@Olckers2015]. The hammer prices exclude these premiums and are therefore not a perfect measure of the cost to the buyer and revenue to the seller. For the purposes of a price index, however, the auction house dummies should capture the different premiums charged by the auction houses. 
+
+*Mediums*: Average prices vary across mediums and studies typically include dummy variables for the different mediums as defined in their data [@Kraussl2010a]. This might be due to the durability of the medium, the stage of production the medium is associated with (e.g. preparatory drawings) and in some case the replacement value of the materials used (e.g. sculptures cast in bronze). Oil paintings traditionally earn the highest prices. The availability of copies may decrease the prices of prints and photographs relative to other mediums. The models use the 9 mediums defined in the dataset, similar to @Olckers2015.[^9] 
+
+[^9]: In a few cases studies have also differentiated between medium (e.g. oil) and material (e.g. canvas). The dataset includes enough detail in the latter years to identify the medium and the materials and this finer classification could be used as a robustness check?
+The subject matter or theme of an artwork can affect its value. A few studies (e.g. Renneboog & Spaenjers (2012) and Fedderke & Li (2014) have included controls for the theme of the artwork. Artwork can, for instance, be classified as portraits, landscapes, abstract works, etc. A classification of this kind would entail a much smaller sample, as the theme would have to be derived from the title of the artwork. Nevertheless, such classification could be carried out as a robustness check?
+A few studies have included dummies to indicate whether an artist was alive. Artworks of artists who are no longer alive are generally thought to be more valuable, as the production has ceased. However, artists who are no longer alive are not able to build on their reputation, which might result in lower sale prices in the long run (Kräussl & Lee, 2010). Hence, it is not clear if the variable will be significant. Fedderke & Li (2014) found that the date of death and age of the artist were statistically insignificant for their South African sample. Nevertheless, the models could include this variable as a robustness check?
+
+*Authenticity dummies*: Models often include dummies for whether the artwork is signed and dated. There might be a premium for these attributes, as there is less uncertainty about authenticity [@Renneboog2014]. These dummies are included in the models and are expected to have positive coefficients. 
+
+*Number of works in the lot*: The models below also control for cases in which more than one artwork was sold in the same auction lot. This is because the recorded size corresponded to each artwork separately and not the group. Moreover, it is possible that lots including more than one artwork are less valuable.
+
+*Date dummies*: The models below include time dummies of a quarterly frequency, which are used to estimate the indices (i.e. the time dummy hedonic method).[^10] The exponentials of the time dummy coefficients represent the appreciation in the value of art in that specific period, relative to the value of art in a common base period.[^11]
+
+[^10]: The double imputation hedonic method is sometimes favoured by statistical agencies, e.g. Eurostat (2013). However, the double imputation index could not be implemented in this case, as the models and the variables changed too much between periods. For example, if an artist was not present in the next period, his/her new price could not be estimated.
+
+[^11]: Such an index will track the geometric mean, rather than the arithmetic mean, of prices over time, because of the log transformation prior to estimation. This is important for the estimation of returns if there is time variation in the (heterogeneity-controlled) dispersion of prices. If it is assumed that the regression residuals are normally distributed in each period, a correction can be made by defining corrected index values as: $I_t =\exp\left[\gamma_t+ 1/2(\sigma_t^2-\sigma_0^2 )\right]*100$, where $\sigma_t^2$ is the estimated variance of the residuals in period t (Renneboog & Spaenjers, 2012). In practice, however, this adjustment is often negligible (Hansen, 2009).
+
+Although are probably still omitted variables that influence prices, and thus may bias the coefficients and the indices.[^12] However, the bias is often small in practice [@Triplett2004; @Renneboog2012]. Relatively detailed data is available for art, which should capture a large part of the variation in sales prices. Omitted variable bias should therefore be less of a problem than for other real alternative assets like real estate. 
+
+[^12]: According to Triplett (2004), even if the hedonic coefficients are biased it is not necessarily the case that the hedonic index will be biased. It will depend on whether the correlations among included and omitted characteristics in the cross section imply the same correlations in the time series. If cross section correlations and time series correlations are the same, the hedonic index may be unbiased, even though the hedonic coefficients are biased. It is possible that changes in (unobserved) characteristics quantities between two periods move to offset the error in estimating the implicit prices of included variables. The bias therefore becomes an empirical matter, because it is the effect on the price index that matters, not just the effect on the hedonic coefficients.
+
+###Continuous artist reputation variable: two-step hedonic approach
+@Kraussl2008 developed a two-step hedonic approach, which allows the use of every auction record, instead of only those auction records that belong to a sub-sample of selected artists. The approach involves the estimation of a continuous artist reputation variable, which is included in the regression instead of the artist dummy variables. In this way the approach accounts for the degrees-of-freedom consideration, which limits the number of artist dummy variables that can be included. It increases the sample size, reduces inherent selection bias, and reduces the impact of outliers when there are few observations for a specific artist.
+
+@Triplett2004 showed that a hedonic function with a logarithmic dependent variable would yield an index equal to the ratio of the unweighted geometric means of prices in periods t and t+1, divided by a hedonic quality adjustment. The hedonic quality adjustment is a quantity measure of the mean change in the characteristics of assets sold in period t and t+1, valued by their implicit prices ($\beta_j$): 
+$$Index = \frac{\prod_{i=1}^n(P_{i,t+1})^\frac{1}{n}}{\prod_{i=1}^m(P_{i,t})^\frac{1}{m}}/\text{hedonic adjustment} $$
+$$\text{hedonic adjustment} = \exp \left[\sum_{j=1}^z\beta_j(\sum_{i=0}^n \frac{X_{ij,t+1}}{n}- \sum_{i=1}^m \frac{X_{ij,t}}{m})\right]$$
+
+@Kraussl2008 argued the same method could be used to adjust the average price of an artist's work for differences in quality. The resulting index yields the value of artworks by artist y, relative to the base artist 0:
+$$\text{Artist reputation index} = \frac{\prod_{i=1}^n(P_{i,y})^\frac{1}{n}/\prod_{i=1}^m(P_{i,0})^\frac{1}{m}}{\exp \left[\sum_{j=1}^z\beta_j(\sum_{i=0}^n \frac{X_{ij,y}}{n}- \sum_{i=1}^m \frac{X_{ij,0}}{m})\right]} $$
+
+where $P_{i,y}$  is the value of painting i, created by artist y; $X_{ij}$ are the characteristics of the artworks, excluding the artist dummy variables. 
+
+The first step is to estimate the full hedonic model on a sub-sample of artists to obtain the characteristic prices ($\beta_j$). Following @Kraussl2008, the sub-sample includes the top 100[^13] artists in terms of volume, representing 53% of records and 92% of the value. The coefficients are similar to those for the full pooled model and it is assumed that the characteristic prices are representative. Next the artist reputation index is calculated for each artist relative to the base artist (Walter Battiss), i.e. the relative quality corrected prices for the works of artist y relative to artist 0. The reputation index is then used as a continuous proxy variable for artistic value in the hedonic models, instead of the artist dummies. 
+
+[^13]: More artists can be included in the first step, but the estimation takes very long to process.
+
+##Estimation Results
+The full pooled sample estimation results are reported in Table 2. The coefficients are all significant and have the expected signs.[^14]
+
+[^14]: The squared size term has the opposite coefficient (i.e. it is positive but should be negative), so I have excluded it for the time being. 
+
+```{r reputation, eval=FALSE, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+##------------------------------------------##
+##---ARTIST REPUTATION VARIABLE (Kraussl)---##
+##------------------------------------------##
+modeldata <- subset(artdata, artdata$rank_all<101)
+list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
+                    "nr_works","artist","timedummy")
+expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
+model_100 <- lm(expl_vars, data=modeldata)
+
+#Second step: betaj coefficients are plugged into equation for every artist pair (base & another) 
+rep <- list()
+rep[[1]] <- 1
+for(i in 2:(max(artdata$rank_total))) {
+    list_vars <- c(list_expl_vars,"price")
+    
+    #geometric mean of paintings by artist y
+    y <- subset(artdata[,list_vars], artdata$rank_total==1)
+    y <- y[!rowSums(is.na(y)), ]
+    py <-  exp(mean(log(y$price)))  
+    ym1 <- subset(artdata[,list_vars], artdata$rank_total==i)
+    ym1 <- ym1[!rowSums(is.na(ym1)), ]
+    pym1 <-  exp(mean(log(ym1$price)))
+    sbx <- 0
+    
+    #average of characteristics time implicit attribute price
+    xy <- mean(y$lnarea)
+    xym1 <- mean(ym1$lnarea)   
+    b <- summary(model_100)$coefficients[grepl("lnarea", rownames(summary(model_100)$coefficients)),1]
+    bx <- b*(xym1-xy)   
+    sbx <- sbx + bx
+    
+    xy <- mean(y$lnsculpt_area)
+    xym1 <- mean(ym1$lnsculpt_area)   
+    b <- summary(model_100)$coefficients[grepl("lnsculpt_area", rownames(summary(model_100)$coefficients)),1]
+    bx <- b*(xym1-xy)   
+    sbx <- sbx + bx
+    
+    xy <- mean(y$nr_works)
+    xym1 <- mean(ym1$nr_works)   
+    b <- summary(model_100)$coefficients[grepl("nr_works", rownames(summary(model_100)$coefficients)),1]
+    bx <- b*(xym1-xy)   
+    sbx <- sbx + bx
+    
+    xy <- mean(as.numeric(y$dum_signed)-1)
+    xym1 <- mean(as.numeric(ym1$dum_signed)-1)   
+    b <- summary(model_100)$coefficients[grepl("dum_signed", rownames(summary(model_100)$coefficients)),1]
+    bx <- b*(xym1-xy)   
+    sbx <- sbx + bx
+    
+    xy <- mean(as.numeric(y$dum_dated)-1)
+    xym1 <- mean(as.numeric(ym1$dum_dated)-1)   
+    b <- summary(model_100)$coefficients[grepl("dum_dated", rownames(summary(model_100)$coefficients)),1]
+    bx <- b*(xym1-xy)   
+    sbx <- sbx + bx
+    
+    auc_house <- c("Ashbeys","Bernardi","Bonhams","Russell Kaplan","Stephan Welz","Strauss","Christies")  
+    for(j in auc_house) {
+        xy <- mean(as.numeric(y$ah_code==j))
+        xym1 <- mean(as.numeric(ym1$ah_code==j))  
+        b <- summary(model_100)$coefficients[grepl(j, rownames(summary(model_100)$coefficients)),1]
+        bx <- b*(xym1-xy)   
+        sbx <- sbx + bx
+    }
+    
+    medium <- c("Watercolour","Oil","Acrylic","Print/Woodcut","Mixed Media","Sculpture","Photography","Other")  
+    for(k in medium) {
+        xy <- mean(as.numeric(y$med_code==k))
+        xym1 <- mean(as.numeric(ym1$med_code==k))   
+        b <- summary(model_100)$coefficients[grepl(k, rownames(summary(model_100)$coefficients)),1]
+        bx <- b*(xym1-xy)   
+        sbx <- sbx + bx
+    }
+    rep[i] <- (pym1/py)/exp(sbx)
+}
+
+for(i in 1:(max(artdata$rank_total))) { 
+    artdata$reputation[(artdata$rank_total==i)] <- rep[i]
+}
+
+artdata$reputation <- as.numeric(unlist(artdata$reputation))
+artdata$lnrep <- log(artdata$reputation)
+```
+
+```{r hedonicrep, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
+#Load pre-calculated dataset (for speed) from API_3.R
+artdata <- read.csv("artdata_lnrep.csv", header=TRUE)
+
+#The result: index of average price per artist adjusted for quality, relative to the base artist 
+#It can replace the artist dummies as a continuous variable in a second regression of equation 1 
+list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
+                    "nr_works","lnrep","timedummy")
+
+source("full_model.R")
+rep_results <- full_model(artdata,list_expl_vars)
+
+source("overlap1y_model.R")
+suppressMessages(rep_overlap1 <- overlap1y_model(artdata,list_expl_vars))
+
+source("overlap2y_model.R")
+suppressMessages(rep_overlap2 <- overlap2y_model(artdata,list_expl_vars))
+
+source("rolling_model.R")
+suppressMessages(rep_rolling <- rolling_model(artdata,list_expl_vars))
+```
+
+```{r table2, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
+                    "nr_works","lnrep","timedummy")
+expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+"))) 
+modeldata <- artdata 
+model_all <- lm(expl_vars, data=modeldata) 
+stargazer(model_all, title = "Hedonic Regression results", omit=c("timedummy"), omit.labels = "Quarterly dummies", header=FALSE, single.row = TRUE, type = "latex")
+```
+
+The implicit prices of hedonic characteristics (i.e. tastes) may change over time [@Renneboog2012]. One way to allow for gradual shifts in parameters is to employ an adjacent-periods regression, in which the models are estimated using only sub-samples of periods that are adjacent to each other. There are trade-offs in selecting the length of the estimation window. Shorter estimation windows decrease the likelihood of large breaks but also decrease the number of observations used to estimate the parameters [@Dorsey2010]. 
+
+Two versions of this method are estimated. Similar to @Dorsey2010 in the context of real estate, adjacent-period hedonic models for 1-year estimation windows are calculated. This seems to be a reasonable compromise for the South African art market, where large auctions are held relatively infrequently. To increase the estimation sample size, the models are also estimated for every 2-year period, which is similar to @Renneboog2012 in the context of art. The indices are then calculated by chain-linking the returns, as Figure 3 illustrates for the 2-year version of the index.[^15]
+
+[^15]: We can exclude this if it is unnecessary
+
+```{r figure3, echo=FALSE, warning=FALSE, cache = TRUE, fig.height=3.5, fig.width=7.5, fig.cap="Chain-linked art price index from the 2-year adjacent-period regressions"}
+index_plot <- melt(rep_overlap2[,c(-2,-12)], id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank())
+g
+```
+
+In the context of real estate, @Shimizu2010 suggested a so-called overlapping-period hedonic regression method using multiple "neighbourhood periods". Specifically, they estimated parameters by taking a certain length as the estimation window and shifting this period forward in rolling regressions. They argued that this method should be able to handle seasonal changes in parameters better than adjacent-periods regressions, although it may suffer more from the disadvantages associated with pooling. To apply this method, 5-year rolling regressions were run, which also corresponds to the rolling 5-year regression used to estimate the CAPI. The estimation window is then shifted forward one year, which allows gradual shifts in the parameters. 
+
+The coefficients form these models are similar in magnitude to the full model and significant in almost all cases. For example, the coefficient associated with the size of the artwork is 0.426 using the standard hedonic regression, while the average coefficients from the other regressions are 0.44, 0.43 and 0.42. However, there are a few cases in which the estimated parameters fluctuate quite substantially. For example, the coefficient of the Strauss auction house dummy varies between 1.04 in the pooled model and 0.77 in one the sub-samples, indicating that non-negligible structural changes might have occurred during the sample period.[^16]  
+
+[^16]: We can include the average values of the coefficients in Table 2 if necessary? A formal Chow test can also be conducted to test for structural breaks in the coefficients. See Berndt (1991) for the use of Chow tests for hedonic functions.
+
+Figure 4 illustrates the resulting quarterly art price indices from these four methods, using the continuous artist reputation variable. The indices follow similar cyclical patterns over the period, although the index calculated with the 1-year adjacent-period method is slightly lower than the other indices, especially after the peak in 2008. As one would expect, the indices follow a similar cyclical pattern and appreciated rapidly in the run-up to the financial crisis.[^17] These indices are also very similar to the indices based on the traditional time dummy method, which includes dummy for as many artists as possible, confirming the findings in @Kraussl2008.[^18] 
+
+[^17]: It will be interesting to compare this cyclical behaviour to other asset prices and to art price indices available for other countries, as we will do below.
+
+[^18]: This section could also include diagnostic tests for the hedonic models. For instance, Olckers et al (2015) suggest the use of robust or clustered standard errors. The auction results include the sales of multiple artworks by the same artist, which is likely to violate the assumption that all the observations are independent. There are likely to be unobservable characteristics associated with the artists, which will lead the error term of artworks by the same artist to be correlated. They cluster the errors by the artist to test the effect this may have on the significance of the independent variables. Clustering increases the standard error by a large amount for all the variables.
+
+```{r figure4, echo=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Hedonic South African art price indices (2000Q1=100)"}
+hedonic_indices <- rep_rolling[,c(1,2)]
+colnames(hedonic_indices) <- c("Date","Rep_Full")
+hedonic_indices <- cbind(hedonic_indices,Adjacent_1y=rep_overlap1[,19])
+hedonic_indices <- cbind(hedonic_indices,Adjacent_2y=rep_overlap2[,11])
+hedonic_indices <- cbind(hedonic_indices,Rolling=rep_rolling[,15])
+
+index_plot <- melt(hedonic_indices, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
+g
+```
+
+#References
+

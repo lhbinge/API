@@ -13,16 +13,17 @@ suppressMessages(library(quantreg))
 suppressMessages(library(McSpatial))
 suppressMessages(library(quantmod))
 suppressMessages(library(xtable))
+suppressMessages(library(scales))
 
 setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art Price Index\\R Code")
-artdata <- read.csv("Auction database.csv", header=TRUE, sep=";",na.strings = "", skipNul = TRUE, 
+artdata <- read.csv("Auction database.csv", header=TRUE, sep=",",na.strings = "", skipNul = TRUE, 
                     colClasses=c("character","numeric","numeric","numeric","numeric","factor","factor","factor","character",
                                  "factor","factor","factor","character","factor","factor","factor","numeric","character",
                                  "numeric","numeric","numeric","numeric","numeric","numeric"))
+
 ##===================##
 ## CLEANING THE DATA ##
 ##===================##
-
 artdata$date <- as.Date(artdata$date)
 artdata$med_code <- factor(artdata$med_code, labels=c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut",
                                                       "Mixed Media","Sculpture","Photography", "Other"))
@@ -32,6 +33,7 @@ artdata$timedummy <- factor(as.yearqtr(artdata$date, "%Y-%m-%d"))
 artdata$lnprice <- log(artdata$price)
 artdata$lnarea <- log(artdata$area)
 artdata$lnarea2 <- artdata$lnarea*artdata$lnarea
+#inteaction term: sculptures often only reported with 1 dimension (height)
 artdata$lnsculpt_area <- ifelse(artdata$med_code=="Sculpture", artdata$lnarea, 0)
 artdata$counter <- as.numeric(artdata$timedummy)
 
@@ -46,15 +48,19 @@ rankings$n <- NULL
 
 artdata <- merge(artdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
 
+#-------------------------------
+#Plot turnover by auction house
 artplot <- aggregate(artdata$hammer_price, by=list(artdata$year,artdata$ah_code), FUN = sum, na.rm=TRUE)
 g <- ggplot(artplot, aes(x=Group.1, y=x,fill=Group.2))
 g <- g + geom_bar(stat="identity")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + scale_fill_discrete(name="Auction House")
+g <- g + scale_y_continuous(labels=comma)
 g <- g + ylab("Turnover (Sum of Hammer Price)")
 g <- g + xlab("Date")
 g
 
+#Plot total sales and annual median price
 artplot1 <- aggregate(artdata$hammer_price, by=list(artdata$year), length)
 artplot2 <- aggregate(artdata$hammer_price, by=list(artdata$year), FUN = median, na.rm=TRUE)
 artplot <- merge(artplot1, artplot2, by="Group.1",all.x=TRUE)
@@ -77,6 +83,72 @@ summaryfunction <- function(x) {
 xt <- xtable(summaryfunction(artdata$hammer_price), caption="Descriptive statistics of auction hammer prices")
 print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
 
+
+##----------------------##
+##---CENTRAL TENDENCY---##
+##----------------------##
+
+naive_index <- aggregate(artdata$price, by=list(artdata$timedummy), FUN=median, na.rm=TRUE)
+naive_index$index <- naive_index$x
+naive_index$index <- naive_index$index/naive_index[1,2]*100
+naive_index$index <- as.numeric(naive_index$index)
+colnames(naive_index) <- c("Date","Median","Index_Naive")
+
+#------------------------------
+#Stratify by artist and medium
+#get quantity and median price per group per quarter    
+strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist, artdata$med_code), FUN=mean)
+strat_q <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist, artdata$med_code), FUN=sum)
+strat_q$x <- strat_q$x/strat_p$x        #the count q
+strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist, artdata$med_code), FUN=median)
+
+chain2 <- function(strat_p, strat_q, kwartaal1,kwartaal2) {
+    strat_p1 <- subset(strat_p, strat_p$Group.1==kwartaal1)
+    strat_q1 <- subset(strat_q, strat_q$Group.1==kwartaal1)
+    strat_p2 <- subset(strat_p, strat_p$Group.1==kwartaal2)
+    strat_q2 <- subset(strat_q, strat_q$Group.1==kwartaal2)
+    #get sample of median prices and quantities for specific artist for the two quarters
+    strat_pc <- merge(strat_p1, strat_p2, by=c("Group.2","Group.3"))
+    strat_qc <- merge(strat_q1, strat_q2, by=c("Group.2","Group.3"))
+    #Laspeyres (keeps quantity weights fixed at base)
+    Lasp <- sum(strat_pc$x.y*strat_qc$x.x,na.rm=TRUE)/sum(strat_pc$x.x*strat_qc$x.x,na.rm=TRUE)
+    #Paasche (keeps quantity weights fixed at end)
+    Paas <- sum(strat_pc$x.y*strat_qc$x.y,na.rm=TRUE)/sum(strat_pc$x.x*strat_qc$x.y,na.rm=TRUE)
+    return(c(Lasp,Paas))
+}
+
+datum <- c("2000 Q1","2000 Q2","2000 Q3","2000 Q4","2001 Q1","2001 Q2","2001 Q3","2001 Q4","2002 Q1","2002 Q2","2002 Q3","2002 Q4",
+           "2003 Q1","2003 Q2","2003 Q3","2003 Q4","2004 Q1","2004 Q2","2004 Q3","2004 Q4","2005 Q1","2005 Q2","2005 Q3","2005 Q4",
+           "2006 Q1","2006 Q2","2006 Q3","2006 Q4","2007 Q1","2007 Q2","2007 Q3","2007 Q4","2008 Q1","2008 Q2","2008 Q3","2008 Q4",
+           "2009 Q1","2009 Q2","2009 Q3","2009 Q4","2010 Q1","2010 Q2","2010 Q3","2010 Q4","2011 Q1","2011 Q2","2011 Q3","2011 Q4",
+           "2012 Q1","2012 Q2","2012 Q3","2012 Q4","2013 Q1","2013 Q2","2013 Q3","2013 Q4","2014 Q1","2014 Q2","2014 Q3","2014 Q4",
+           "2015 Q1","2015 Q2","2015 Q3","2015 Q4")
+
+ketting2 <- chain2(strat_p,strat_q,datum[1],datum[2])
+ketting2 <- rbind(ketting2,chain2(strat_p,strat_q,datum[2],datum[3]))
+for(i in 3:63) {
+    ketting2 <- rbind(ketting2,chain2(strat_p,strat_q,datum[i],datum[(i+1)]))
+}
+ketting2 <- as.data.frame(ketting2)
+ketting2$V3 <- sqrt(ketting2[,1]*ketting2[,2])  #Fisher index is the geometric mean
+ketting2$V4[1] <- ketting2$V3[1]*100
+for(i in 2:63) {                                #use the growth rates to generate the index
+    ketting2$V4[i] <- ketting2$V4[(i-1)]*ketting2$V3[i]
+}
+ketting2$Date <- as.factor(datum[-1])
+colnames(ketting2) <- c("Las","Paas","Fisher","Index_Fisher","Date")
+
+index_plot <- merge(ketting2, naive_index, by.x="Date", by.y="Date",all.x=TRUE)
+index_plot <- index_plot[,c(1,5,7)]
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
+g
 
 ##------------------------------------------##
 ##---ARTIST REPUTATION VARIABLE (Kraussl)---##
@@ -166,21 +238,197 @@ artdata <- read.csv("artdata_lnrep.csv", header=TRUE)
 
 #The result: index of average price per artist adjusted for quality, relative to the base artist 
 #It can replace the artist dummies as a continuous variable in a second regression of equation 1 
+
+#-------------------
+# FULL SAMPLE MODEL
+#-------------------
+full_model <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
+                                                 "nr_works","artist","timedummy")) {
+    if("artist" %in% list_expl_vars) { 
+        modeldata <- subset(artdata, artdata$rank_all<max(artdata$rank_all,na.rm=TRUE))
+    } else modeldata <- artdata
+    expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
+    model_all <- lm(expl_vars, data=modeldata)
+    time_results <- summary(model_all)$coefficients[grepl("time", rownames(summary(model_all)$coefficients)),1]
+    time_results <- as.data.frame(time_results)
+    time_results$index_all <- exp(time_results$time_results)*100
+    return(time_results)
+}
+
+#-----------------------------
+# OVERLAPPING PERIODS (1-year)
+#-----------------------------
+overlap1y_model <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
+                                                      "nr_works","artist","timedummy")) {
+    expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
+    res_list <- list()
+    for(i in 1:16) {
+        if("artist" %in% list_expl_vars) {
+            modeldata <- subset(artdata, artdata[,(44+i)]<max(artdata[,(44+i)],na.rm=TRUE))
+        } else modeldata <- artdata
+        modeldata <- subset(modeldata, modeldata$counter>(i*4-5)& modeldata$counter<(i*4+1))
+        model <- lm(expl_vars, data=modeldata)  
+        res_list[[i]] <- summary(model)$coefficients[grepl("time", rownames(summary(model)$coefficients)),1]
+    }
+    #Merge all results
+    if("artist" %in% list_expl_vars) {
+        overlap <- time_results
+    } else overlap <- rep_results
+    overlap$time_results <- NULL
+    overlap <- merge(overlap, res_list[[1]], by="row.names", all=TRUE)
+    overlap[,3] <- exp(overlap[,3])*100
+    for(i in 2:16) {
+        overlap <- merge(overlap, res_list[[i]], by.x = "Row.names", by.y = "row.names", all=TRUE)
+        overlap[,(i+2)] <- exp(overlap[i+2])*100
+    } 
+    #Calculate index
+    overlap$ind <- overlap[,3]
+    overlap[2,19] <- overlap[3,19]*overlap[2,2]/overlap[3,2]   #Interpolate
+    overlap$teller <- c(3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7,8,8,8,8,9,9,9,9,10,10,10,10,11,11,11,11,12,12,12,12,
+                        13,13,13,13,14,14,14,14,15,15,15,15,16,16,16,16,17,17,17,17,18,18,18,18)
+    for(i in 3:62) {
+        j <- overlap[(i+1),20]
+        if(is.na(overlap[i,j])) {
+            overlap[(i+1),19] <- overlap[i,19]*overlap[(i+1),j]/100
+        } else { 
+            overlap[(i+1),19] <- overlap[i,19]*overlap[(i+1),j]/overlap[i,j] 
+        }   
+    }
+    colnames(overlap) <- c("Date","Index_Full","Index_m1","Index_m2","Index_m3","Index_m4","Index_m5","Index_m6",
+                           "Index_m7","Index_m8","Index_m9","Index_m10","Index_m11","Index_m12","Index_m13",
+                           "Index_m14","Index_m15","Index_m16","Index_Adjacent1y","teller")
+    overlap$Date <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
+                      "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+                      "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+                      "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+                      "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                      "2015Q1","2015Q2","2015Q3","2015Q4")
+    overlap$Date <- factor(overlap$Date)
+    return(overlap)
+}
+
+#-----------------------------
+# OVERLAPPING PERIODS (2-year)
+#-----------------------------
+overlap2y_model <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
+                                                      "nr_works","artist","timedummy")) {
+    expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
+    res_list <- list()
+    for(i in 1:8) {
+        if("artist" %in% list_expl_vars) {
+            modeldata <- subset(artdata, artdata[,(60+i)]<max(artdata[,(60+i)],na.rm=TRUE))
+        } else modeldata <- artdata
+        modeldata <- subset(modeldata, modeldata$counter>(i*8-9)& modeldata$counter<(i*8+1))
+        model <- lm(expl_vars, data=modeldata)  
+        res_list[[i]] <- summary(model)$coefficients[grepl("time", rownames(summary(model)$coefficients)),1]
+    }
+    #Merge all results
+    if("artist" %in% list_expl_vars) {
+        overlap2 <- time_results
+    } else overlap2 <- rep_results
+    overlap2$time_results <- NULL
+    overlap2 <- merge(overlap2, res_list[[1]], by="row.names", all=TRUE)
+    overlap2[,3] <- exp(overlap2[,3])*100
+    for(i in 2:8) {
+        overlap2 <- merge(overlap2, res_list[[i]], by.x = "Row.names", by.y = "row.names", all=TRUE)
+        overlap2[,(i+2)] <- exp(overlap2[i+2])*100
+    } 
+    #Calculate index
+    overlap2$ind <- overlap2[,3]
+    overlap2[2,11] <- overlap2[3,11]*overlap2[2,2]/overlap2[3,2]   #Interpolate
+    overlap2$teller <- c(3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,
+                         7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,10,10,10,10,10,10,10,10)
+    for(i in 7:62) {
+        j <- overlap2[(i+1),12]
+        if(is.na(overlap2[i,j])) {
+            overlap2[(i+1),11] <- overlap2[i,11]*overlap2[(i+1),j]/100
+        } else { 
+            overlap2[(i+1),11] <- overlap2[i,11]*overlap2[(i+1),j]/overlap2[i,j] 
+        }   
+    }
+    colnames(overlap2) <- c("Date","Index_Full","Index_m1","Index_m2","Index_m3","Index_m4","Index_m5",
+                            "Index_m6","Index_m7","Index_m8","Index_Adj2y","teller")
+    overlap2$Date <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
+                       "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+                       "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+                       "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+                       "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                       "2015Q1","2015Q2","2015Q3","2015Q4")
+    overlap2$Date <- factor(overlap2$Date)
+    return(overlap2)
+}
+
+#----------------------
+#ROLLING 5-YEAR WINDOWS
+#----------------------
+
+rolling_model <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
+                                                    "nr_works","artist","timedummy")) {
+    expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
+    res_list <- list()
+    for(i in 1:12) {
+        if("artist" %in% list_expl_vars) {
+            modeldata <- subset(artdata, artdata[,(32+i)]<max(artdata[,(32+i)],na.rm=TRUE))
+        } else modeldata <- artdata
+        modeldata <- subset(modeldata, modeldata$counter>(i*4-4)&modeldata$counter<(i*4+17))
+        model <- lm(expl_vars, data=modeldata)  
+        summary(model)
+        res_list[[i]] <- summary(model)$coefficients[grepl("time", rownames(summary(model)$coefficients)),1]
+    }
+    
+    #Update
+    #if("artist" %in% list_expl_vars) {
+    #    modeldata <- subset(artdata, artdata[,44]<max(artdata[,44],na.rm=TRUE))
+    #} else modeldata <- artdata
+    #modeldata <- subset(modeldata, modeldata$counter>42& modeldata$counter<63)
+    #model <- lm(expl_vars, data=modeldata)  
+    #summary(model)
+    #res_list[[12]] <- summary(model)$coefficients[grepl("time", rownames(summary(model)$coefficients)),1]
+    
+    #Merge all results
+    if("artist" %in% list_expl_vars) {
+        rolling <- time_results
+    } else rolling <- rep_results
+    rolling$time_results <- NULL
+    rolling <- merge(rolling, res_list[[1]], by="row.names", all=TRUE)
+    rolling[,3] <- exp(rolling[,3])*100
+    for(i in 2:12) {
+        rolling <- merge(rolling, res_list[[i]], by.x = "Row.names", by.y = "row.names", all=TRUE)
+        rolling[,(i+2)] <- exp(rolling[i+2])*100
+    }    
+    
+    #Calculate index
+    rolling$ind <- rolling[,3]
+    rolling[2,15] <- rolling[3,15]*rolling[2,2]/rolling[3,2]  #interpolate
+    rolling$teller <- c(3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7,8,8,8,8,9,9,9,9,
+                        10,10,10,10,11,11,11,11,12,12,12,12,13,13,13,13,14,14,14,14)
+    for(i in 19:62) {  #chaining
+        j <- rolling[(i+1),16]
+        rolling[(i+1),15] <- rolling[i,15]*rolling[(i+1),j]/rolling[i,j]
+    }
+    
+    colnames(rolling) <- c("Date","Index_Full","Index_m1","Index_m2","Index_m3","Index_m4","Index_m5","Index_m6",
+                           "Index_m7","Index_m8","Index_m9","Index_m10","Index_m11","Index_m12","Index_Rolling","teller")
+    rolling$Date <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
+                      "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+                      "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+                      "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+                      "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                      "2015Q1","2015Q2","2015Q3","2015Q4")
+    rolling$Date <- factor(rolling$Date)
+    return(rolling)
+}
+
+#========================================================================================
 list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
                     "nr_works","lnrep","timedummy")
 
-source("full_model.R")
 rep_results <- full_model(artdata,list_expl_vars)
-
-source("overlap1y_model.R")
 suppressMessages(rep_overlap1 <- overlap1y_model(artdata,list_expl_vars))
-
-source("overlap2y_model.R")
 suppressMessages(rep_overlap2 <- overlap2y_model(artdata,list_expl_vars))
-
-source("rolling_model.R")
 suppressMessages(rep_rolling <- rolling_model(artdata,list_expl_vars))
 
+#Full model for regression results
 list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
                     "nr_works","lnrep","timedummy")
 expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+"))) 
@@ -199,8 +447,8 @@ g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.title=element_blank())
 g
 
-hedonic_indices <- rep_rolling[,c(1,2)]
-colnames(hedonic_indices) <- c("Date","Full (Rep)")
+hedonic_indices <- rep_overlap1[,c(1,2)]
+colnames(hedonic_indices) <- c("Date","Hedonic_Full")
 hedonic_indices <- cbind(hedonic_indices,Adjacent_1y=rep_overlap1[,19])
 hedonic_indices <- cbind(hedonic_indices,Adjacent_2y=rep_overlap2[,11])
 hedonic_indices <- cbind(hedonic_indices,Rolling=rep_rolling[,15])
@@ -217,17 +465,23 @@ g
 
 
 
-allDup <- function(value) {
-duplicated(value) | duplicated(value, fromLast = TRUE)
+allDup <- function(value) {  #identify duplicated values
+    duplicated(value) | duplicated(value, fromLast = TRUE)
 }
 rsartdata <- artdata[allDup(artdata[,c("artist","title","med_code","area","dum_signed","dum_dated")]),]
 rsartdata <- transform(rsartdata, id = as.numeric(interaction(artist,factor(title),med_code,factor(area),factor(dum_signed),
 factor(dum_dated), drop=TRUE)))
 
-repdata <- repsaledata(rsartdata$lnprice,rsartdata$counter,rsartdata$id)
+repdata <- repsaledata(rsartdata$lnprice,rsartdata$counter,rsartdata$id)  #transform the data to sales pairs
 repeatsales <- repsale(repdata$price0,repdata$time0,repdata$price1,repdata$time1,mergefirst=2,
-graph=FALSE)
-repeatsales_index <- exp(as.data.frame(repeatsales$pindex))*100
+graph=FALSE)   #generate the repeat sales index
+repeatsales_index <- exp(as.data.frame(repeatsales$pindex))*100   
+repeatsales_index$Date <- c("2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q4",
+                            "2003Q1","2003Q2","2003Q4","2004Q1","2004Q2","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+                            "2006Q1","2006Q2","2006Q3","2006Q4","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+                            "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+                            "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                            "2015Q1","2015Q2","2015Q3","2015Q4")
 
 ##------------------------------------------------------------------
 ##--------------- Pseudo Repeat Sales ------------------------------

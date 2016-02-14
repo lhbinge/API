@@ -1,0 +1,295 @@
+---
+title: "The South African Art Market"
+subtitle: "Explosive Behaviour"
+author: Laurie Binge
+date: "09 February 2016"
+output:
+  beamer_presentation:
+    includes:
+      in_header: mystyle.tex
+    theme: "CambridgeUS"
+    colortheme: "dolphin"
+    fonttheme: "structurebold" 
+    toc: true
+    slide_level: 2
+---
+
+# Introduction
+
+# Data
+
+## South African Art Auction Data
+
+Raw Auction Data from ArtVault
+
+## Turnover
+```{r figure1, echo=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Turnover (sum of hammer prices) by auction house (2000-2015)"}
+#Plot turnover by auction house
+artplot <- aggregate(artdata$hammer_price, by=list(artdata$year,artdata$ah_code), FUN = sum, na.rm=TRUE)
+g <- ggplot(artplot, aes(x=Group.1, y=x,fill=Group.2))
+g <- g + geom_bar(stat="identity")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + scale_fill_discrete(name="Auction House")
+g <- g + scale_y_continuous(labels=comma)
+g <- g + ylab("Turnover (Sum of Hammer Price)")
+g <- g + xlab("Date")
+g
+```
+
+## Sales and Prices
+```{r figure2, echo=FALSE, cache = TRUE, fig.height=4, fig.width=6.5, fig.cap="Median hammer prices and total sales (lots) at auction (2000-2015)"}
+#Plot total sales and annual median price
+artplot1 <- aggregate(artdata$hammer_price, by=list(artdata$year), length)
+artplot2 <- aggregate(artdata$hammer_price, by=list(artdata$year), FUN = median, na.rm=TRUE)
+artplot <- merge(artplot1, artplot2, by="Group.1",all.x=TRUE)
+names(artplot) <- c("Date","Total Sales","Median Price")
+artplot <- melt(artplot, id="Date") 
+g <- ggplot(artplot, aes(x=Date,value,colour=variable,fill=variable))
+g <- g + geom_bar(subset=.(variable=="Total Sales"),stat="identity")
+g <- g + geom_line(subset=.(variable=="Median Price"),size=1)
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
+g 
+```
+
+# Measurement Methodology
+
+Accurate measurement is difficult:
+- Assets are heterogeneous (unique) & involve large transaction costs 
+- Less liquid than traditional assets & low transaction frequency
+- Small part of the overall market is traded at any given time 
+= Composition & quality not constant
+
+Estimation methodologies:
+a Naïve or central tendency methods
+b Repeat sales regressions
+c Hedonic regressions
+d Hybrid models
+
+## Cenrtral Tendency
+```{r figure3, echo=FALSE, cache = TRUE, fig.height=4, fig.width=6.5, fig.cap="Central tendency South African art price indices (2000Q1=100)"}
+index_plot <- merge(ketting2, naive_index, by.x="Date", by.y="Date",all.x=TRUE)
+index_plot <- index_plot[,c(1,5,7)]
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
+g
+```
+
+## Hedonic Regressions
+
+$$\ln P_{it} =\alpha+\sum_{j=1}^z\beta_jX_{ij}+\sum_{t=1}^\tau\gamma_tD_{it}+\epsilon_{it}$$
+
+## Repeat Sales
+
+$$\ln\frac{P_{t+1}}{P_t} =\sum_{i=1}^t\gamma_id_{i}+\epsilon_{i}$$
+
+
+# Results
+
+## Central Tendency
+
+## Hedonic Regressions
+
+### Artwork characteristics
+- Artist reputation: Continuous artist reputation variable
+$$\text{Artist reputation index} = \frac{\prod_{i=1}^n(P_{i,y})^\frac{1}{n}/\prod_{i=1}^m(P_{i,0})^\frac{1}{m}}{\exp \left[\sum_{j=1}^z\beta_j(\sum_{i=0}^n \frac{X_{ij,y}}{n}- \sum_{i=1}^m \frac{X_{ij,0}}{m})\right]} $$
+- Size
+- Auction house
+- Mediums
+- Authenticity dummies
+- Number of works in the lot
+- Date dummies
+
+### Adjacent Periods
+```{r figure4, echo=FALSE, warning=FALSE, cache = TRUE, fig.height=3.5, fig.width=7.5, fig.cap="Chain-linked two-year adjacent period art price index"}
+index_plot <- melt(rep_overlap2[,c(-2,-12)], id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank())
+g 
+```
+
+### Estimation Results
+```{r figure5, echo=FALSE, cache = TRUE, fig.height=4, fig.width=7, fig.cap="Hedonic South African art price indices (2000Q1=100)"}
+index_plot <- melt(hedonic_indices, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
+g 
+```
+
+## Hybrid: Pseudo-Repeat Sales
+
+$$\ln P_{bsj} - \ln P_{arj}=\sum_{k=1}^K\beta_k(X_{bsjk}-X_{arjk})+\sum_{t=0}^\tau\gamma_td_{t}+\epsilon_{srabj}$$
+
+
+### Estimation Results
+
+```{r figure6, echo=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Pseudo repeat sales South African art price indices (2000Q1=100)"}
+index_plot <- melt(rep_rew[,-2], id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
+g
+```
+
+# Comparison and Evaluation
+
+## Comparison
+
+```{r figure7, echo=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Comparing South African art price indices (2000Q1=100)"}
+all_indices <- cbind(hedonic_indices[-1],rep_indices[,c(-1,-2)])
+all_indices <- rbind(c(seq(100,100, length.out = ncol(rep_indices))),all_indices)
+all_indices[3,7] <- 100
+all_indices <- cbind(all_indices,Median=naive_index$Index_Naive)
+all_indices <- cbind(Date=naive_index$Date, all_indices)
+
+
+index_plot <- melt(all_indices[,c(1,2,6,9)], id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g
+```
+
+```{r table4, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+temp_indices <- all_indices
+colnames(temp_indices) <- c("Date","Hedonic","Adj1y","Adj2y","Roll","ps.RS(1%)","ps.RS(0.1%)","ps.RS(0)","Median")
+# Check correlations (in levels and growth rates)
+source("corstarsl.R")
+for(i in 2:ncol(temp_indices)) {temp_indices[,i] <- as.numeric(temp_indices[,i]) }
+ts.all_indices <- as.ts(temp_indices[,-1],start =c(2000,1),end=c(2015,4),frequency=4) 
+
+xt <- xtable(corstarsl(ts.all_indices), caption="Correlations in Levels")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+```
+
+```{r table5, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+dl.indices <- as.data.frame(diff(log(ts.all_indices)))
+xt <- xtable(corstarsl(dl.indices), caption="Correlations in DLogs")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+```
+
+
+## Evaluation
+```{r table6, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+##Comparing index smoothness
+# Check std dev or volatility en AC(1)
+ac.1 <-numeric()
+eval <- data.frame()
+returns <- all_indices
+for(i in 2:ncol(all_indices)) {
+    for(j in 2:nrow(all_indices)) {
+        returns[j,i] <- all_indices[j,i]/all_indices[j-1,i] - 1
+    }
+}
+returns <- returns[-1,-1]
+
+vol <- apply(returns,MARGIN=2, FUN=sd, na.rm=TRUE)
+for(i in 1:ncol(returns)) {
+    ac.1[i] <- acf(returns,na.action = na.pass, plot = FALSE, lag.max = 1)$acf[,,i][2,i]
+}
+eval <- cbind(vol=vol,ac.1=ac.1[1:8])
+xt <- xtable(eval, caption="Smoothness Indicators")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+```
+
+## International Art Price Indices
+
+```{r figure8, echo=FALSE, cache = TRUE, warning=FALSE, fig.height=4, fig.width=7.5, fig.cap="Comparing art price indices (2000Q1=100)"}
+#Compared to other art markets
+assets <- read.csv("Assets.csv", header=TRUE, na.strings = "", skipNul = TRUE)
+index_plot <- cbind(all_indices[,c(1,2,6)],assets[,c(7,8,9)])
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank())
+g
+```
+
+## Other South African Assets
+
+```{r figure9, echo=FALSE, cache = TRUE, warning=FALSE, fig.height=4, fig.width=7.5, fig.cap="Comparing South African asset price indices (2000Q1=100)"}
+assets <- read.csv("Assets.csv", header=TRUE, na.strings = "", skipNul = TRUE)
+index_plot <- cbind(all_indices[,c(1,2,6)],assets[,c(3,4,5)])
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank())
+g 
+```
+
+# Explosive Behaviour
+
+## Bubbles in Asset 
+
+## Methodology: Explosive Behaviour
+
+## Results: No Drift or Trend
+
+```{r figure10, echo=FALSE, message=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Full hedonic model: Test stat and critical values"}
+index_plot <- bubble.test1[,c(1,5,8,10,11,12)]
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g
+```
+
+## Results: Drift
+
+```{r figure11, echo=FALSE, message=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="ps-RS model(0.1%): Test stat and critical values"}
+index_plot <- bubble.test2[,c(1,5,8,10,11,12)]
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 3) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g
+```
+
+## Bubble Dates
+
+```{r table7, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+xt <- xtable(datums, caption="Dates of explosive behaviour")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+```
+
+
+------------------------------------------------
+![alt text](Mealies.png)
+

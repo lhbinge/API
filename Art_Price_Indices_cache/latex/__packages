@@ -19,3 +19,6 @@ TTR
 quantmod
 xtable
 scales
+survival
+Formula
+Hmisc

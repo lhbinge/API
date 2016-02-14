@@ -53,6 +53,11 @@ $Vol=\sigma_{r_t^*}=\sqrt{\sigma_r^2+\sigma_\eta^2}$ and $AC(1)=\rho_{r^*}=(\rho
 
 $$\Delta y_t = \alpha_w + (\rho_w-1)y_{t-1}+\sum_{i=1}^k\phi_w^i \Delta y_{t-i} + \epsilon_t $$
 
+$$P_t = \frac{1}{1+R_f}E_t(P_{t+1} + \gamma_{t+1})$$
 
+When $t+n$ is far into the future, $\frac{1}{1+R_f}E_t(P_{t+n})$ does not affect $P_t$ as it tends to zero as n becomes infinitely large.
+
+The present value of an asset could be written as: The asset price can be written as: 
+$P_t = F_t + B_t$, where $F_t$, called the fundamental component is: $$F_t = E_t[\Sigma_{i=1}^n \frac{1}{1+R_f} (\gamma_{t+n})]$$
 
 

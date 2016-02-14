@@ -59,6 +59,8 @@ suppressMessages(library(McSpatial))
 suppressMessages(library(quantmod))
 suppressMessages(library(xtable))
 suppressMessages(library(scales))
+suppressMessages(library(tseries))
+suppressMessages(library(urca))
 
 setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art Price Index\\R Code")
 artdata <- read.csv("Auction database.csv", header=TRUE, sep=",",na.strings = "", skipNul = TRUE, 
@@ -283,7 +285,7 @@ index_plot <- merge(ketting2, naive_index, by.x="Date", by.y="Date",all.x=TRUE)
 index_plot <- index_plot[,c(1,5,7)]
 index_plot <- melt(index_plot, id="Date")  # convert to long format
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
-g <- g + geom_point(size = 3) 
+g <- g + geom_point(size = 1) 
 g <- g + geom_line()
 g <- g + ylab("Index")
 g <- g + xlab("")
@@ -640,10 +642,10 @@ Two versions of this method are estimated. Similar to @Dorsey2010 in the context
 
 [^18]: We can exclude this if it is unnecessary?
 
-```{r figure4, echo=FALSE, warning=FALSE, cache = TRUE, fig.height=3.5, fig.width=7.5, fig.cap="Chain-linked two-year adjacent period art price index"}
+```{r figure4, echo=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Chain-linked two-year adjacent period art price index"}
 index_plot <- melt(rep_overlap2[,c(-2,-12)], id="Date")  # convert to long format
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
-g <- g + geom_point(size = 3) 
+g <- g + geom_point(size = 1) 
 g <- g + geom_line()
 g <- g + ylab("Index")
 g <- g + xlab("")
@@ -673,7 +675,7 @@ hedonic_indices <- cbind(hedonic_indices,Rolling=rep_rolling[,15])
 
 index_plot <- melt(hedonic_indices, id="Date")  # convert to long format
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
-g <- g + geom_point(size = 3) 
+g <- g + geom_point(size = 1) 
 g <- g + geom_line()
 g <- g + ylab("Index")
 g <- g + xlab("")
@@ -704,7 +706,7 @@ The Ramsey RESET tests still indicate misspecification of the model, which is to
 The following section looks at an alternative methodology, the pseudo-repeat sales method, as a consistency check. If the alternative method produces the same kind of trend and the same marked increase in prices, it provides more confidence that the results are reasonable and robust to changes in specification. 
 
 #Hybrid Models: The Pseudo Repeat Sales Method
-The limited number of repeat sales observations in the database (1,103)[^24] limits the usefulness of the repeated sales approach, as it leads to a very volatile index with very large appreciation in prices over the period.[^25] The weakness of the classical repeat sales method is the limited sample size and sample selection bias caused by the need for repeat sales of the same asset. An alternative is to use the ''pseudo repeat sales'' (ps-RS) procedure recently introduced by @Guo2014 in the real estate literature. The ps-RS method was used to construct more reliable price indices for newly constructed homes in China.
+The limited number of repeat sales observations in the database (561)[^24] limits the usefulness of the classical repeated sales approach in this case. It leads to a very volatile index with very large appreciation in prices over the period.[^25] The weakness of the classical repeat sales method is the limited sample size and sample selection bias caused by the need for repeat sales of the same asset. An alternative is to use the "pseudo repeat sales" (ps-RS) procedure recently introduced by @Guo2014 in the real estate literature. The ps-RS method can be applied here to supplement the repeat sales in the database, and in so doing, allow the estimation of a variant of the repeat sale index, which mitigates some of the omitted variable bias of the hedonic model. 
 
 [^24]: Unfortunately, the dataset does not uniquely identify each artwork. Repeated sales were identified by matching sales records using the artist name, size, title, medium, and the presence of a signature and a date.
 
@@ -726,21 +728,357 @@ rsartdata <- transform(rsartdata, id = as.numeric(interaction(artist,factor(titl
 
 repdata <- repsaledata(rsartdata$lnprice,rsartdata$counter,rsartdata$id)    #transform the data to sales pairs
 repeatsales <- repsale(repdata$price0,repdata$time0,repdata$price1,repdata$time1,mergefirst=2,
-                       graph=TRUE,graph.conf=TRUE,conf=.95)                 #generate the repeat sales index
+                       graph=FALSE,graph.conf=TRUE,conf=.95)                 #generate the repeat sales index
 repeatsales_index <- exp(as.data.frame(repeatsales$pindex))*100
 repeatsales_index$Date <- c("2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q4",
-                            "2003Q1","2003Q2","2003Q4","2004Q1","2004Q2","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
-                            "2006Q1","2006Q2","2006Q3","2006Q4","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
-                            "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
-                            "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
-                            "2015Q1","2015Q2","2015Q3","2015Q4")
+"2003Q1","2003Q2","2003Q4","2004Q1","2004Q2","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+"2006Q1","2006Q2","2006Q3","2006Q4","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+"2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4","2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4","2015Q1","2015Q2","2015Q3","2015Q4")
 ```
 
-@Guo2014 developed ps-RS procedure to deal with two unique features in the Chinese urban residential market. Firstly, new home sales accounted for a large share of total sales (87% in 2010). As a consequence there was a limited number of repeat sales, similar to the South African art market. Secondly, housing development in many high-density cities occurred with a high degree of homogeneity in the units built within the typical residential complex. The idea was then to match similar homes within each complex or building in order to construct a large pseudo repeat sales sample. They argued that the ps-RS procedure could produce a more reliable and accurate picture of home price appreciation in markets with these features.
+@Guo2014 used the ps-RS method to construct more reliable price indices for newly constructed homes in China. The ps-RS procedure was developed to deal with two unique features in the Chinese urban residential market. Firstly, new home sales accounted for a large share of total sales (87% in 2010). As a consequence there was a limited number of repeat sales, similar to the South African art market. Secondly, housing development in many high-density cities occurred with a high degree of homogeneity in the units built within the typical residential complex. The idea was then to match similar homes within each complex or building in order to construct a large pseudo repeat sales sample. They argued that the ps-RS procedure could produce a more reliable and accurate picture of home price appreciation in markets with these features.
 
-This procedure is similar to the matched-sample procedure proposed by @McMillen2012. This approach views the repeat sales model as an extreme solution to a matching problem: it requires an exact match to estimate an index, e.g. the same Van Gogh *"Wheat Field with Crows"* is tracked over time, to take account all of the variation in attributes. The idea behind the ps-RS method (or imperfect matching) is that some assets may be similar enough to compare over time. For example, Van Gogh's well-known *Sunflowers* series, of which there are five versions, might be similar enough to be treated as repeated sales. The objective is to match, or pair together, individual sales observations across time, according to some criterion so as to cancel out as much as possible the unobservable attributes, making the model more parsimonious and robust [@Gou2014].
+This procedure is similar to the matched-sample procedure proposed by @McMillen2012. This approach views the repeat sales model as an extreme solution to a matching problem: it requires an exact match to estimate an index, e.g. the same Van Gogh *"Wheat Field with Crows"* is tracked over time, to take account all of the variation in attributes. The idea behind the ps-RS method (or imperfect matching) is that some assets may be similar enough to compare over time. For example, Van Gogh's well-known *Sunflowers* series, of which there are five versions, might be similar enough to be treated as repeated sales. The objective is to match, or pair together, individual sales observations across time, according to some criterion, so as to cancel out as much as possible the unobservable attributes, making the model more parsimonious and robust [@Guo2014].
 
 A hedonic matching criterion is used to create pseudo sales pairs and the repeat sales regression is then applied to these pseudo pairs. The approach is therefore a hybrid model of the type that has been demonstrated to have desirable features in the econometric literature. It mitigates two of the main difficulties of these models: lack of repeat sales data and potential omitted variable bias. It mitigates the problems of small sample sizes and sample selection bias with repeated sales techniques by using more of the transaction data and reducing the probability that unusual observations will unduly affect the results [@McMillen2012]. This method has not been used in the art literature to date. The caveat is that even two artworks by the same artist of a similar size and in the same medium do not necessarily serve as close substitutes [@Olckers2015]. 
+
+##Index construction methodology
+Pseudo sales pairs can be generated when two non-simultaneous transactions share enough similarities in attributes. The pseudo repeat sales are generated for artist and medium pairs, i.e. within-artist/medium groups. A distance metric is used to identify the most similar transactions by an artist in the same medium across adjacent periods. For each artist, a hedonic model is estimated with physical attributes and time dummies. The distance metric is based on the predicted value for each artwork excluding the time dummies (i.e. the non-temporal component). The distance metric between two sales is the absolute value of the difference between the two predicted log price values. The threshold for this distance metric can be customised. One option is to select pairs with the smallest value of the distance metric, which can be set to zero in this case. Alternatively, pairs with their distance metric smaller than a certain threshold can be selected.[^26] This is a trade-off between the within-pair homogeneity (for mitigating bias) and sample size (for reducing random errors).
+
+[^26]: Guo et al. (2014) actually do this for each adjacent period, but I think the matches are too dissimilar in this case. Guo et al. (2014) select the lowest x% of the pairs with their distance metric smaller than a certain value y. They argue that it is easier and convenient to use x%, instead of y, to define this selection rule because for different adjacent-periods the exact distribution of the distance metric is different. For instance, they can select 20%, 40%, 60% or 80% of the pairs with their distance metric values lower than corresponding thresholds (they are also not very interested in the exact values of the distance metric thresholds). For instance, if they set x% to be equal to 100%, all within-building pairs will be kept, which returns every-adjacent-pair combination without any specific similarity threshold. I think this is too broad and my matching is a little stricter: I use pairs with very similar predicted values (small distance metrics) that are not necessarily from adjacent periods, which gives me very similar matched pairs in terms of the observable attributes. Again this is a trade-off between the within-pair ''similarity'' (higher similarity is good for mitigating bias) and the sample size (larger size is good for reducing random errors). I can change this if necessary, but the smaller say 20% seems just as arbitrary. We can also talk about larger distance metrics, but running time does increase exponentially.
+
+Pseudo pairs are generated by matching each sale with its most adjacent subsequent sale. This is consistent with best practice in repeat sales estimation whenever a single item has more than two sales in the sample. This matching process may generate many more pairwise observations than the number of individual transactions in the sample. No unnecessary redundancy is created in the pseudo dataset, however, because each pseudo pair is unique.
+
+For a given artist j, artwork a in quarter t=r and artwork b in quarter t=s are adjacent transactions (s>r), and the two make a matched pair. The differential hedonic regression (ps-RS) model is expressed as:
+$$\ln P_{bsj} - \ln P_{arj}=\sum_{k=1}^K\beta_k(X_{bsjk}-X_{arjk})+\sum_{t=0}^\tau\gamma_td_{t}+\epsilon_{srabj}$$
+where $D_t$ is the dummy representing the time the sale occurs. $D_t=1$ if the later sale in the pair happened in quarter $t=s$; $D_t=-1$ if the former sale in the pair happened in quarter $t=r$; and $D_t=0$ otherwise. The $\epsilon_{srabj}$ term is the difference between the two error terms in the log prices of the two sales.
+
+Within-pair first differencing will cancel out any variables for which the attributes are the same between the two units, including both observable and unobservable attributes. Only attributes that differ between the two units within a pair will be left on the right-hand side as independent variables, differenced between the second minus the first sale, reflecting the hybrid specification. This equation is then regressed over all the pseudo-pairs.[^27] The ps-RS indices are then calculated based on the coefficients of the time dummies. 
+
+[^27]: In order to make an apples-to-apples comparison, Guo et al (2014) employed a weighted least squares (WLS) regression to estimate the ps-RS index, where the hedonic attribute weights over time will be the same as those in the hedonic index. But would this not just change the standard errors?
+
+Thus, the pseudo-repeat sales approach addresses our problem of lack of repeat-sales data and to some extent the omitted variables problem in the hedonic method. The pseudo repeat sales pairs include the 561 true repeat sales, or perfect matches, where the model controls for all factors because they are cancelled out by taking first differences. The same is true when those omitted variables are the same for pseudo sales pairs, which supplement the true repeat sales. Hopefully, these pseudo-pairs control for many of the unobservable (or difficult to measure) variables and interaction terms as the perfect matches. The ps-RS might control for interaction terms and squared terms (e.g. artist and medium combinations), finer medium classifications (e.g. a specific artist's Print/Woodcuts might typically be linocuts), or attributes like theme, style and material (e.g. oil paintings or a similar size by a specific artist might typically be of the same theme or on the same material like board). In many cases, therefore, these attributes will be removed by taking first differences and will no longer be omitted variables. 
+
+##Pseudo Repeat Sales Results
+This section applies the ps-RS methodology to the South African art market. The hedonic specification is used to generate pseudo sales pairs, for three distance metrics. The larger the distance metrics the larger the pseudo repeat sample that is generated. Again, this is a trade-off between the within-pair homogeneity (for mitigating bias) and sample size (for reducing random errors). The interest is not in the exact values of the distance metric thresholds and they are somewhat arbitrary. 
+
+For the first two indices, pairs (for a given artist in a specific medium) are selected when the distance metric is below a threshold of 1% and 0.1%. The other distance metric is set equal to zero, i.e. no differences in the observable hedonic attributes, which provides the ''purest'' sample in terms of homogeneity of the units. These three distance metrics create samples of 120,870, 27,224 and 17,684 pseudo-sales pairs respectively. These samples are then used to estimate the hybrid repeat sales model and to generate the art price indices.
+
+```{r psRSsample, echo=FALSE, eval= FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
+##------------------------------------------------------------------
+##--------------- Pseudo Repeat Sales ------------------------------
+##------------------------------------------------------------------
+#The distance metric between any two sales (across the intervening time period) is the 
+#absolute value of the difference between the two predicted hedonic log values. 
+#The threshold for this distance metric can be customised. 
+#At one extreme, one can choose to select only one pair with the smallest value of the distance metric. 
+
+#match per artist by hedonic function
+list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
+                    "nr_works","timedummy")
+expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
+
+ps.RSsample <- function(threshold) {
+    teller <-0
+    repdata <- data.frame()
+    rartdata <- subset(artdata,artdata$rank_all<max(artdata$rank_all,na.rm=TRUE))  #exclude artists with one sale
+    keep <- c("lnprice","artist","title","lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
+              "nr_works","timedummy","counter")
+    rartdata <- rartdata[,names(rartdata) %in% keep]
+    rartdata <- rartdata[complete.cases(rartdata),]  
+    
+    #Rank total again for new sample
+    rankings <- count(rartdata, artist)
+    rankings$rank_total <- row_number(desc(rankings$n))
+    rartdata <- merge(rartdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
+    
+    for(k in 1:max(rartdata$rank_total)) { 
+        modeldata <- subset(rartdata, rartdata$rank_total==k)
+        modeldata$med_code <- factor(modeldata$med_code)
+        modeldata$ah_code <- factor(modeldata$ah_code)
+        modeldata$dum_signed <- factor(modeldata$dum_signed)
+        modeldata$dum_dated <- factor(modeldata$dum_dated)
+        modeldata$timedummy <- factor(modeldata$timedummy)
+        
+        #if there is only one factor level => make it a zero
+        if(length(levels(modeldata$med_code))==1)   { modeldata$med_code <- as.numeric(0) }
+        if(length(levels(modeldata$ah_code))==1)    { modeldata$ah_code <- as.numeric(0) }
+        if(length(levels(modeldata$dum_signed))==1) { modeldata$dum_signed <- as.numeric(0) }
+        if(length(levels(modeldata$dum_dated))==1)  { modeldata$dum_dated <- as.numeric(0)   }
+        
+        if(length(levels(modeldata$timedummy))!=1) {   #if there were sales in more than one period
+            model <- lm(expl_vars, data=modeldata, na.action = na.exclude)
+            newdata <- modeldata
+            newdata$timedummy <- newdata$timedummy[1]  #turn time dummy off by making them all the same
+            modeldata <- cbind(modeldata,fitted=predict.lm(model,newdata=newdata))  #add predicted value
+            
+            for(i in 1:nrow(modeldata)) {  #give items below threshold the same id
+                modeldata$id <- 0
+                teller <- teller + 1
+                modeldata$id[i] <- teller
+                medium <- modeldata$med_code[i]
+                modeldata$distance <- abs(modeldata$fitted[i]-modeldata$fitted)  #distance metric
+                #distances <- cbind(distances,modeldata$distance)
+                if(threshold=="nearest"){  #nearest match if same medium
+                    #modeldata$id[(modeldata$distance==min(modeldata$distance[modeldata[,"id"]==0 & modeldata[,"med_code"]==medium],na.rm=TRUE))] <- teller
+                    modeldata$id[(modeldata$distance==0 & modeldata[,"med_code"]==medium)] <- teller
+                } else {                   #if same medium and distance smaller than threshold
+                    modeldata$id[(modeldata$distance<threshold & modeldata[,"med_code"]==medium)] <- teller
+                } 
+                if(sum(modeldata[,"id"]!=0)>1) {
+                    repdata <- rbind(repdata,modeldata[modeldata[,"id"]!=0, ])
+                }
+            }
+        }
+    }
+    #transform the data to pseudo repeat sales pairs (for all attributes)
+    fullrep <- cbind(repsaledata(repdata$lnprice,repdata$counter,repdata$id),
+                     repsaledata(repdata$artist,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$title,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$lnarea,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$med_code,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$ah_code,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$lnsculpt_area,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$dum_signed,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$dum_dated,repdata$counter,repdata$id)[,4:5],
+                     repsaledata(repdata$nr_works,repdata$counter,repdata$id)[,4:5])
+    
+    colnames(fullrep) <- c("id","time0","time1","price0","price1","artist0","artist1","title0","title1","area0","area1",
+                           "med_code0","med_code1","ah_code0","ah_code1","sculpt0","sculpt1","sign0","sign1","date0","date1",
+                           "nr0","nr1")
+    return(fullrep)
+}
+
+ps.RSsample_1 <- ps.RSsample(0.01)
+ps.RSsample_2 <- ps.RSsample(0.001)
+ps.RSsample_n <- ps.RSsample("nearest") 
+```
+
+```{r psRS, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
+ps.RSsample_1 <- read.csv("psRSsample_0.01.csv", header=TRUE, sep=",",na.strings = "NA", skipNul = TRUE)
+ps.RSsample_2 <- read.csv("psRSsample_0.001.csv", header=TRUE, sep=",",na.strings = "NA", skipNul = TRUE)
+ps.RSsample_n <- read.csv("psRSsample_n.csv", header=TRUE, sep=",",na.strings = "NA", skipNul = TRUE)
+
+ps.RS <- function(fullrep) {
+    dy <- fullrep$price1 - fullrep$price0
+    timevar <- levels(factor(c(fullrep$time0, fullrep$time1)))
+    nt = length(timevar)
+    n = length(dy)
+    xmat <- array(0, dim = c(n, nt - 1))
+    for (j in seq(1 + 1, nt)) {
+        xmat[, j - 1] <- ifelse(fullrep$time1 == timevar[j], 1, xmat[, j - 1])
+        xmat[, j - 1] <- ifelse(fullrep$time0 == timevar[j],-1, xmat[, j - 1])
+    }
+    colnames(xmat) <- paste("Time", seq(1 + 1, nt))
+    fit <- lm(dy ~ xmat + 0)
+    
+    fullrep$med_code0[is.na(fullrep$med_code0)] <- "Oil"
+    fullrep$med_code1[is.na(fullrep$med_code1)] <- "Oil"
+    fullrep$ah_code0[is.na(fullrep$ah_code0)] <- "Strauss"
+    fullrep$ah_code1[is.na(fullrep$ah_code1)] <- "Strauss"
+    
+    darea <- fullrep$area1 - fullrep$area0
+    
+    med0 <- model.matrix(~fullrep$med_code0)
+    med1 <- model.matrix(~fullrep$med_code1)
+    dmed <- med1 - med0
+    
+    ah0 <- model.matrix(~fullrep$ah_code0)
+    ah1 <- model.matrix(~fullrep$ah_code1)
+    dah <- ah1 - ah0
+    
+    dsculpt <- fullrep$sculpt1 - fullrep$sculpt0
+    dnr <- fullrep$nr1 - fullrep$nr0
+    
+    sign0 <- model.matrix(~fullrep$sign0)
+    sign1 <- model.matrix(~fullrep$sign1)
+    dsign <- sign1 - sign0
+    
+    date0 <- model.matrix(~fullrep$date0)
+    date1 <- model.matrix(~fullrep$date1)
+    ddate <- date1 - date0
+
+    ps.RS <- lm(dy ~ darea + dah + dsculpt + dnr + dsign + ddate + xmat + 0)
+    ps.RS_results <- summary(ps.RS)$coefficients[grepl("Time", rownames(summary(ps.RS)$coefficients)),1]
+    ps.RS_results <- as.data.frame(ps.RS_results)
+    ps.RS_results$index_all <- exp(ps.RS_results$ps.RS_results)*100
+    ps.RS_results$pairs <- nrow(fullrep)
+    
+    return(ps.RS_results)
+}
+
+ps.RS_1 <- ps.RS(ps.RSsample_1)
+ps.RS_2 <- ps.RS(ps.RSsample_2)
+ps.RS_n <- ps.RS(ps.RSsample_n)
+
+Dates <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
+           "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+           "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+           "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+           "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+           "2015Q1","2015Q2","2015Q3","2015Q4")
+
+ps.RS_1$Date <- Dates
+ps.RS_2$Date <- Dates
+ps.RS_n$Date <- Dates[-2]
+
+rep_indices <- merge(repeatsales_index, ps.RS_1, by="Date", all=TRUE)
+rep_indices <- merge(rep_indices, ps.RS_2, by="Date", all=TRUE)
+rep_indices <- merge(rep_indices, ps.RS_n, by="Date", all=TRUE)
+rep_indices <- rep_indices[,c(1,2,4,7,10)]
+colnames(rep_indices) <- c("Date","Repeat Sales","ps.RS(1%)","ps.RS(0.1%)","ps.RS(nearest)")       
+```
+
+Figure 6 illustrates the three versions of the ps-RS indices. The indices point to similar trends in art prices over the sample period, although the "purest" pseudo repeat sales index (with the distance metric set to zero) is slightly higher than the other two indices in level. The larger sample based on the higher distance metric does appear to noticeably reduce the volatility of the index. This is similar to the findings in @Guo2014, where they argued that larger estimation samples reduce the excess volatility caused by random estimation error in the time-dummy coefficients.
+
+```{r figure6, echo=FALSE, cache = TRUE, warning=FALSE, fig.height=4, fig.width=7.5, fig.cap="Pseudo repeat sales South African art price indices (2000Q1=100)"}
+index_plot <- melt(rep_indices[,-2], id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 1) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g 
+```
+
+###Conclusion
+The pseudo repeat sales method allows us to estimate a hybrid version of the repeat sales model, by matching artworks by a specific artist in a specific medium to create a large sample of pseudo repeat sales. These pseudo repeat sales supplement the true repeat sales in the sample and allows the estimation of a hybrid version of the repeat sales model. This model controls for many of the potential omitted variables in the hedonic specifications, while reducing the sample selection bias of the classical repeat sales model. These alternative model results indicate that the indices are similar in terms of trend and point to the same kind of marked increase in prices, similar to the findings in @Guo2014. This provides more confidence that the results are reasonable and robust to changes in specification. The following section evaluates and compares the different indices.
+
+#Comparison and Evaluation
+As all of these approaches involve estimating unknown parameters, there is no way to know with certainty which price index is closest to the truth [@McMillen2012]. This section will compare the different indices, in order to determine if they provide a consistent picture of price movements in the South African art market. It will also attempt to find out which models provide a better and more believable gauge of price movements in this specific case. 
+
+##Comparison of the indices
+The indices can be compared and evaluated in a number of ways. The first step is usually to compare the indices graphically. Figure 7 illustrate representative indices for the three methodologies: median values, the pooled hedonic index and the ps-RS(1%) index. The two regression-based approaches behave quite differently from a simple median, providing evidence that adjusting for the composition and quality of artworks sold provide better estimates of pure price changes. These results confirm that regression-based measures are useful when measuring pure art price changes in South Africa, as illustrated for real estate by @Els2014. 
+
+```{r figure7, echo=FALSE, cache = TRUE, warning=FALSE, fig.height=4, fig.width=7.5, fig.cap="Comparing South African art price indices (2000Q1=100)"}
+all_indices <- cbind(hedonic_indices[-1],rep_indices[,c(-1,-2)])
+all_indices <- rbind(c(seq(100,100, length.out = ncol(rep_indices))),all_indices)
+all_indices[3,7] <- 100
+all_indices <- cbind(all_indices,Median=naive_index$Index_Naive)
+all_indices <- cbind(Date=naive_index$Date, all_indices)
+
+
+index_plot <- melt(all_indices[,c(1,2,6,9)], id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 1) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g
+```
+
+The hedonic and ps-RS indices show remarkably similar trends over the sample period.[^28] This seems to imply that the theoretical concerns with the hedonic approach, regarding omitted variables and misspecification, may not be as much of a problem in this sample of sales. Both measures indicate that the average price of a constant-quality artwork increased significantly between 2005 and 2007. All of the regression-based indices peaked in the first quarter of 2008, except for the "purest" ps-RS index (with zero distance metric), which had an apparent outlier in 2010Q1. This shows that there is some consistency in the estimates from these very different models. The indices also showed troughs after the financial crisis, similar to other asset prices [@Shimizu2010]. 
+
+[^28]: Confidence intervals of the time dummy estimates can be constructed to see if they are statistically different. It is then possible to examine whether there is any overlap between the confidence intervals. For instance, @Kraussl2008 constructed confidence intervals for the time dummy estimates as follows: $\exp(\gamma_t ± 2*\sigma_{\gamma t})$. We could also report the proportion of the sample over which the various measures are statistically different. 
+
+The correlations between all of the indices in levels are very high and significant, as reported in Table 4. Table 5 reports the correlations in the growth rates (returns) between the various indices. The positive and significant correlations between the regression-based indices indicate that their general trends are similar, and are different from the simple median. Allowing for time variation in the hedonic coefficients does not materially affect the results and neither does the exact value of the distance metric chosen. 
+
+```{r table4, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+temp_indices <- all_indices
+colnames(temp_indices) <- c("Date","Hedonic","Adj1y","Adj2y","Roll","ps.RS(1%)","ps.RS(0.1%)","ps.RS(0)","Median")
+# Check correlations (in levels and growth rates)
+source("corstarsl.R")
+for(i in 2:ncol(temp_indices)) {temp_indices[,i] <- as.numeric(temp_indices[,i]) }
+ts.all_indices <- as.ts(temp_indices[,-1],start =c(2000,1),end=c(2015,4),frequency=4) 
+
+xt <- xtable(corstarsl(ts.all_indices), caption="Correlations in Levels")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+```
+
+```{r table5, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+dl.indices <- as.data.frame(diff(log(ts.all_indices)))
+xt <- xtable(corstarsl(dl.indices), caption="Correlations in DLogs")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+```
+
+##Evaluating index smoothness
+The "signature" of random error in time dummy coefficient estimation for price indices is that it imparts "noise" into the index. Two indicators are often useful to quantify a comparison of the relative amount of noise between two or more indices: the volatility and the first-order autocorrelation (AC(1)) in the index returns. The index volatility and AC(1) directly reflect the accuracy of the index returns. Other things being equal, the lower the volatility and the higher the AC(1), the more accurate and less noisy is the index. 
+
+The volatility and AC(1) are signal-to-noise metrics, based directly on the index produced. @Guo2014 argued that such metrics are more appropriate for judging the quality of price indices than the more traditional approach based on the diagnostic metrics of the underlying regression (e.g. standard errors of the residuals). The regression residuals do not represent error in the price index, and hence do not directly reflect inaccuracy in the index returns.
+
+Even if an index was perfectly accurate, measuring the central tendency of market price changes in each period, the regression would still have residuals and the time dummy coefficients might still have large standard errors, resulting simply from the dispersion of individual art prices around the central tendency. Moreover, when datasets become large, the regression diagnostics are often impressively good simply because of the size of the sample. This renders tests economic significance more interesting that tests of statistical significance. The signal-to-noise metrics directly reflect the economic significance of random error in the indices that are being compared. They are therefore more relevant indicators of index quality.
+
+To explain the rationale, consider the simple model of random noise in the index: 
+$$M_t=M_{t-1}+r_t$$ and $$I_t=M_t+\epsilon_t=\sum_{i=1}^tr_i+\epsilon_t$$
+where $r_t$ (the log price difference) is the true return (the central tendency) of market art price in period t. The returns are arithmetically added across time to build the true market value level $M_t$ (in logs). $I_t$ is the index (beginning t periods ago at log value zero) as of the end of period t. $\epsilon_t$ is the index-level random error, the error that causes noise and therefore matters from the perspective of index users. It can be modelled as white noise, with zero mean and zero correlation. The noise, unlike true market volatility, does not accumulate over time. 
+
+This leads to the formula for noise in the index return:
+$$r_t^*=I_t-I_{t-1}=r_t+(\epsilon_t-\epsilon_{t-1})= r_t+\eta_t$$
+where $r_t^*$ is the index return and $\eta_t$ is the noise component of the index return in period t. 
+
+Based on this equation the standard deviation of the index return $\sigma_{r_t^*}$, which represents the volatility of the index (Vol) and the first order autocorrelation coefficient $\rho_{r^*}$ (AC(1)) can be derived as:
+$$Vol=\sigma_{r_t^*}=\sqrt{\sigma_r^2+\sigma_\eta^2}$$ and $$AC(1)=\rho_{r^*}=(\rho_r\sigma_r^2-\sigma_\eta^2/2)/(\sigma_r^2+\sigma_\eta^2)$$ 
+where $\sigma_r^2$ and $\sigma_\eta^2$ are the variance of the true return and the noise respectively, and $\rho_r$ is the 1st order autocorrelation coefficient of the true return (which is usually positive in real asset markets). 
+
+Volatility is dispersion in returns over time. There is always true volatility as the true market prices evolve over time. The ideal price index filters out the noise-induced volatility to leave only the true market volatility. The noise (random error) in the index adds to volatility in the index, in addition to the true volatility, and therefore causes excess volatility in the index. This excess volatility brings down the 1st order autocorrelation, as pure noise has an AC(1) value of -0.5.  In the Vol equation, the lower $\sigma_\eta^2$ (the less noise), the lower index volatility and the better the estimation of market return each period. Thus, lower Vol or higher AC(1) will indicate a better quality art price index in the sense of less noise.
+
+Table 6 reports these two metrics of index smoothness for the art price indices. The comparison suggests that that the regression-based indices are much smoother than the simple median. The volatility and autocorrelations of the regression-based measures are around the same size. The largest sample ps-RS index (with a distance metric of 1%) performs the best in terms of the noise metrics, with a lower volatility and a higher first order autocorrelation in returns. This suggest that the large sample ps-RS has less noise than the hedonic indices, and the larger the matching space, the better performance in terms of noise reduction.[^29] However, the differences are not large.
+
+[^29]: @Guo2014 suggest another test  of index quality in terms of minimising random error, which is based on the Hodrick & Prescott filter (HP filter). The HP filter is a spline fitting method that divides a time series into smoothed trend and cyclical components. The idea is then to examine which index has the least deviation from its smoothed HP representation. For each type of index the sum of squared differences between the index returns and its smoothed returns are calculated and compared. Moet ek dit ook doen?  
+
+```{r table6, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+##Comparing index smoothness
+# Check std dev or volatility en AC(1)
+ac.1 <-numeric()
+eval <- data.frame()
+returns <- all_indices
+for(i in 2:ncol(all_indices)) {
+    for(j in 2:nrow(all_indices)) {
+        returns[j,i] <- all_indices[j,i]/all_indices[j-1,i] - 1
+    }
+}
+returns <- returns[-1,-1]
+
+vol <- apply(returns,MARGIN=2, FUN=sd, na.rm=TRUE)
+for(i in 1:ncol(returns)) {
+    ac.1[i] <- acf(returns,na.action = na.pass, plot = FALSE, lag.max = 1)$acf[,,i][2,i]
+}
+eval <- cbind(vol=vol,ac.1=ac.1[1:8])
+xt <- xtable(eval, caption="Smoothness Indicators")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+```
+
+##Comparing the art price indices to other asset prices
+To check that the estimated South African art price indices provide reasonable results, they can be compared to available international art price indices and other South African assets and to over the sample period.[^30]
+
+[^30]: This is supposed to address to some extent Rulof's comments on why auction prices increased to this extent. He asked whether there was a fundamental change in the art that came to market. From the observable characteristics it does not seem to be the case, but the indices control for those characteristics, and they tell us nothing about unobservable attributes. But we can always argue that the indices might not be representative of the entire art market, but that it at least captures price movements in the auction market.
+
+Figure 8 illustrates the art price indices for the US, UK and France, calculated by Artprice, together with two representative South African art price indices. In contrast to the other art price indices, the South African art market index experienced a decrease at the start of the period. However, between 2005 and 2008 all of the art price indices experienced steep increases. By the end of the period the international art price indices are around the same level as the South African art price index. This suggests that the estimated art price indices provide reasonable estimates of pure price changes over the period. 
+
+```{r figure8, echo=FALSE, cache = TRUE, warning=FALSE, fig.height=4, fig.width=7.5, fig.cap="Comparing art price indices (2000Q1=100)"}
+#Compared to other art markets
+assets <- read.csv("Assets.csv", header=TRUE, na.strings = "", skipNul = TRUE)
+index_plot <- cbind(all_indices[,c(1,2,6)],assets[,c(7,8,9)])
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g
+```
+
+@Renneboog2014, who examined the extent to which art prices generated in Western auction markets moved together since the early 1970s. Despite the cross-country variation in long-term returns, art markets often display similar movements and almost all the correlations in returns were significantly positive, although in some cases the correlations were relatively low. In this case the correlations in levels are all positive and significant, but the correlations in returns are not significant over the whole sample period. This might be because the art auction markets covered in @Renneboog2014 were all in the developed Western world. 
+
+Figure 9 compares the two representative art price indices with indices for other South African assets: the JSE All Share index, the ABSA House price index and the Bond index. Local asset prices have increased much more than art prices over the entire period, which suggests that the art price indices do not provide outlandish estimates of pure price changes over the period. The equity and property markets also peaked at around the same time as the art price indices. However, after declining for the first few years of the sample, the art price indices experienced an episode of rapid price appreciation between 2005 and 2008. 
+
+```{r figure9, echo=FALSE, cache = TRUE, warning=FALSE, fig.height=4, fig.width=7.5, fig.cap="Comparing South African asset price indices (2000Q1=100)"}
+index_plot <- cbind(all_indices[,c(1,2,6)],assets[,c(3,4,5)])
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g 
+```
+
 
 
 #References 

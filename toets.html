@@ -107,6 +107,9 @@ img {
 <div id="bubble-detection" class="section level1">
 <h1>Bubble Detection</h1>
 <p><span class="math display">\[\Delta y_t = \alpha_w + (\rho_w-1)y_{t-1}+\sum_{i=1}^k\phi_w^i \Delta y_{t-i} + \epsilon_t \]</span></p>
+<p><span class="math display">\[P_t = \frac{1}{1+R_f}E_t(P_{t+1} + \gamma_{t+1})\]</span></p>
+<p>When <span class="math inline">\(t+n\)</span> is far into the future, <span class="math inline">\(\frac{1}{1+R_f}E_t(P_{t+n})\)</span> does not affect <span class="math inline">\(P_t\)</span> as it tends to zero as n becomes infinitely large.</p>
+<p>The present value of an asset could be written as: The asset price can be written as: <span class="math inline">\(P_t = F_t + B_t\)</span>, where <span class="math inline">\(F_t\)</span>, called the fundamental component is: <span class="math display">\[F_t = E_t[\Sigma_{i=1}^n \frac{1}{1+R_f} (\gamma_{t+n})]\]</span></p>
 </div>
 
 

@@ -16,7 +16,7 @@ suppressMessages(library(xtable))
 suppressMessages(library(scales))
 suppressMessages(library(tseries))
 suppressMessages(library(urca))
-setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art Price Index\\R Code")
+setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\Art Price Index\\R Code")
 artdata <- read.csv("Auction database.csv", header=TRUE, sep=",",na.strings = "", skipNul = TRUE, 
                     colClasses=c("character","numeric","numeric","numeric","numeric","factor","factor","factor","character",
                                  "factor","factor","factor","character","factor","factor","factor","numeric","character",

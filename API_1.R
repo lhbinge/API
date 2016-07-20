@@ -21,7 +21,7 @@ library(tseries)
 library(urca)
 
 #setwd("C:/Users/Laurie/OneDrive/Documents/BING/METRICS/PhD Proposal Readings/Art Price Index")
-setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art Price Index\\R Code")
+setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\Art Price Index\\R Code")
 
 #library(rJava)
 #library(xlsxjars)
@@ -928,6 +928,60 @@ rsartdata <- transform(rsartdata, id = as.numeric(interaction(artist,factor(titl
 
 repdata <- repsaledata(rsartdata$lnprice,rsartdata$counter,rsartdata$id)    #transform the data to sales pairs
 repeatsales <- repsale(repdata$price0,repdata$time0,repdata$price1,repdata$time1,mergefirst=2,
+                       graph=TRUE,graph.conf=TRUE,conf=.95)                 #generate the repeat sales index
+repeatsales_index <- exp(as.data.frame(repeatsales$pindex))*100
+
+repeatsales_index$Date <- c("2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q4",
+                            "2003Q1","2003Q2","2003Q4","2004Q1","2004Q2","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+                            "2006Q1","2006Q2","2006Q3","2006Q4","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+                            "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+                            "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                            "2015Q1","2015Q2","2015Q3","2015Q4")
+
+write.csv(rsartdata, "rsartdata.csv")
+
+##=====================##
+#do the same but expand it to not match by title - i.e. all other attributes are the same
+#check for duplicates (how many)
+sum(duplicated(artdata[,c("artist","med_code","area","dum_signed","dum_dated")]))
+
+allDup <- function (value)  { #identify duplicated values
+    duplicated(value) | duplicated(value, fromLast = TRUE)
+}
+rsartdata1 <- artdata[allDup(artdata[,c("artist","med_code","area","dum_signed","dum_dated")]),]
+#rsartdata <- transform(rsartdata,id=as.numeric(factor(title)))
+rsartdata1 <- transform(rsartdata1, id = as.numeric(interaction(artist,med_code,factor(area),factor(dum_signed),
+                                                              factor(dum_dated), drop=TRUE)))
+
+repdata1 <- repsaledata(rsartdata1$lnprice,rsartdata1$counter,rsartdata1$id)    #transform the data to sales pairs
+repeatsales <- repsale(repdata1$price0,repdata1$time0,repdata1$price1,repdata1$time1,mergefirst=3,
+                       graph=TRUE,graph.conf=TRUE,conf=.95)                 #generate the repeat sales index
+repeatsales_index <- exp(as.data.frame(repeatsales$pindex))*100
+
+repeatsales_index$Date <- c("2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q4",
+                            "2003Q1","2003Q2","2003Q4","2004Q1","2004Q2","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
+                            "2006Q1","2006Q2","2006Q3","2006Q4","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
+                            "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
+                            "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
+                            "2015Q1","2015Q2","2015Q3","2015Q4")
+
+write.csv(rsartdata, "rsartdata.csv")
+
+##=====================##
+#do the same but expand it to not match by title - i.e. all other attributes are the same
+#check for duplicates (how many)
+sum(duplicated(artdata[,c("artist","med_code","area","dum_signed","dum_dated")]))
+
+allDup <- function (value)  { #identify duplicated values
+    duplicated(value) | duplicated(value, fromLast = TRUE)
+}
+rsartdata1 <- artdata[allDup(artdata[,c("artist","med_code","area","dum_signed","dum_dated")]),]
+#rsartdata <- transform(rsartdata,id=as.numeric(factor(title)))
+rsartdata1 <- transform(rsartdata1, id = as.numeric(interaction(artist,med_code,factor(area),factor(dum_signed),
+                                                                factor(dum_dated), drop=TRUE)))
+
+repdata1 <- repsaledata(rsartdata1$lnprice,rsartdata1$counter,rsartdata1$id)    #transform the data to sales pairs
+repeatsales <- repsale(repdata1$price0,repdata1$time0,repdata1$price1,repdata1$time1,mergefirst=3,
                        graph=TRUE,graph.conf=TRUE,conf=.95)                 #generate the repeat sales index
 repeatsales_index <- exp(as.data.frame(repeatsales$pindex))*100
 

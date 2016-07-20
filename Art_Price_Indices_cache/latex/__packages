@@ -22,3 +22,5 @@ scales
 survival
 Formula
 Hmisc
+tseries
+urca

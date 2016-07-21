@@ -1,3 +1,6 @@
+##===============================================================================================##
+## -------------------------------- ART PRICE INDEX ---------------------------------------------##
+##===============================================================================================##
 
 ##=====================##
 ## READING IN THE DATA ##
@@ -702,7 +705,7 @@ print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.p
 
 ##Comparing index smoothness
 # Check std dev or volatility en AC(1)
-ac.1 <-numeric()
+ac.1 <- numeric()
 eval <- data.frame()
 returns <- all_indices
 for(i in 2:ncol(all_indices)) {

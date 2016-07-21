@@ -148,11 +148,22 @@ g <- g + ylab("log of Price")
 g <- g + xlab("Year")
 g
 
-artplot <- aggregate(artdata$hammer_price, by=list(artdata$timedummy), FUN = sum, na.rm=TRUE)
+artplot <- aggregate(artdata$hammer_price, by=list(artdata$timedummy), FUN = length)
 g <- ggplot(artplot, aes(x=Group.1, y=x))
 g <- g + geom_bar(stat="identity")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + ylab("Sum of Hammer Price")
+g <- g + xlab("Date")
+g
+
+#Plot total sales by auction house
+artplot <- aggregate(artdata$hammer_price, by=list(artdata$timedummy,artdata$ah_code), FUN = length)
+g <- ggplot(artplot, aes(x=Group.1, y=x,fill=Group.2))
+g <- g + geom_bar(stat="identity")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + scale_fill_discrete(name="Auction House")
+g <- g + scale_y_continuous(labels=comma)
+g <- g + ylab("Total Number of Sales (Auction Lots)")
 g <- g + xlab("Date")
 g
 
@@ -194,6 +205,22 @@ g <- g + geom_line(subset=.(variable=="Median Price"),size=1)
 g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
 g
 
+#Plot total turnover and annual median price
+artplot1 <- aggregate(artdata$hammer_price, by=list(artdata$year), sum, na.rm=TRUE)
+artplot2 <- aggregate(artdata$hammer_price, by=list(artdata$year), FUN = median, na.rm=TRUE)
+artplot <- merge(artplot1, artplot2, by="Group.1",all.x=TRUE)
+names(artplot) <- c("Date","Turnover","Median_Price")
+artplot$Turnover <- artplot$Turnover/1000000
+par(mar = c(5,5,2,5))
+plot(artplot$Date, artplot$Median_Price, type="l", lwd=2, col="#F8766D", ylim=c(0,10000), ylab="Median Price", xlab=NA, cex.axis=0.8, cex.lab=0.8)
+par(new = T)
+barplot(artplot$Turnover, col="#00BFC4",  ylim=c(0,600), axes=F, xlab=NA, ylab=NA)
+axis(side = 4, cex.axis=0.8)
+mtext(side = 4, line = 3, "Turnover (Rm)",cex = 0.8)
+par(xpd=TRUE)
+legend(5,-90,legend=c("Median Price", "Turnover (Rm)"), lty=c(1,0), pch=c(NA, 15), col=c("#F8766D","#00BFC4"),horiz = TRUE, bty="n", cex=0.8)
+
+
 g <- ggplot(artdata, aes(x=ah_code, fill = ah_code))
 g <- g + geom_bar(stat="bin")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
@@ -212,6 +239,13 @@ artplot <- subset(artdata, med_code!="Sculpture")
 g <- ggplot(artplot, aes(x=lnarea, y=lnprice))
 g <- g + geom_point(size = 2, alpha = 0.5, aes(colour = med_code))
 g <- g + geom_smooth()
+g <- g + ylab("log of Price")
+g <- g + xlab("log of Area")
+g
+
+artplot <- subset(artdata)
+g <- ggplot(artplot, aes(x=lnarea, y=lnprice))
+g <- g + geom_point(size = 2, alpha = 0.5, aes(colour = med_code))
 g <- g + ylab("log of Price")
 g <- g + xlab("log of Area")
 g
@@ -1507,6 +1541,37 @@ timesale2 <- timesale^2
 fit <- repsale(price0=y0, price1=y1, time0=time0, time1=time1, stage3="square",
                stage3_xlist=~timesale+timesale2)
 
+
+#TOETS----------------
+
+fullrep <- cbind(repsaledata(rsartdata2$lnprice,rsartdata2$counter,rsartdata2$id),
+                 repsaledata(rsartdata2$dum_signed,rsartdata2$counter,rsartdata2$id)[,4:5],
+                 repsaledata(rsartdata2$dum_dated,rsartdata2$counter,rsartdata2$id)[,4:5])
+
+colnames(fullrep) <- c("id","time0","time1","price0","price1","sign0","sign1","date0","date1")
+
+
+    dy <- fullrep$price1 - fullrep$price0
+    timevar <- levels(factor(c(fullrep$time0, fullrep$time1)))
+    nt = length(timevar)
+    n = length(dy)
+    xmat <- array(0, dim = c(n, nt - 1))
+    for (j in seq(1 + 1, nt)) {
+        xmat[, j - 1] <- ifelse(fullrep$time1 == timevar[j], 1, xmat[, j - 1])
+        xmat[, j - 1] <- ifelse(fullrep$time0 == timevar[j],-1, xmat[, j - 1])
+    }
+    colnames(xmat) <- paste("Time", seq(1 + 1, nt))
+    fit <- lm(dy ~ xmat + 0)
+    
+    dsign <- fullrep$sign1 - fullrep$sign0
+    ddate <- fullrep$date1 - fullrep$date0
+    
+    ps.RS <- lm(dy ~ dsign + ddate + xmat + 0)
+    ps.RS_results <- summary(ps.RS)$coefficients[grepl("Time", rownames(summary(ps.RS)$coefficients)),1]
+    ps.RS_results <- as.data.frame(ps.RS_results)
+    ps.RS_results$index_all <- exp(ps.RS_results$ps.RS_results)*100
+    ps.RS_results$pairs <- nrow(fullrep)
+    
 
 ##==============##
 ## DIAGNIOSTICS ##

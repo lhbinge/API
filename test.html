@@ -67,27 +67,13 @@ img {
 
 
 
-<p>author: - name: FirstName LastName affiliation: University/Company address: &gt; First line Second line email: <a href="mailto:name@company.com">name@company.com</a> url: <a href="http://rstudio.com" class="uri">http://rstudio.com</a> - name: Second Author affiliation: Affiliation title: formatted: “A Capitalized Title: Something about a Package \pkg{foo}” # If you use tex in the formatted title, also supply version without plain: “A Capitalized Title: Something about a Package foo” # For running headers, if needed short: “\pkg{foo}: A Capitalized Title” abstract: &gt; The abstract of the article. keywords: # at least one keyword must be supplied formatted: [keywords, not capitalized, “\proglang{Java}”] plain: [keywords, not capitalized, Java] preamble: &gt;  output: rticles::jss_article —</p>
-<div id="introduction" class="section level1">
-<h1>Introduction</h1>
-<p>This template demonstrates some of the basic latex you’ll need to know to create a JSS article.</p>
-<div id="code-formatting" class="section level2">
-<h2>Code formatting</h2>
-<p>Don’t use markdown, instead use the more precise latex commands:</p>
-<ul>
-<li></li>
-<li></li>
-<li></li>
-</ul>
-</div>
-</div>
-<div id="r-code" class="section level1">
-<h1>R code</h1>
-<p>Can be inserted in regular R markdown blocks.</p>
-<pre class="r"><code>x &lt;- 1:10
-x</code></pre>
-<pre><code>##  [1]  1  2  3  4  5  6  7  8  9 10</code></pre>
-</div>
+<hr />
+<p>output: pdf_document: fig_caption: yes number_sections: true fontsize: 12pt geometry: margin=1in</p>
+<p>The hedonic approach estimates the value attached (i.e. the implicit prices) to each of these attributes. The approach entails regressing the logarithm of the sales price on the relevant attributes. The standard hedonic model usually takes the following form: <span class="math display">\[\ln P_{it} = \sum_{t=1}^T \delta_t D_{it} + \sum_{j=1}^J \beta_{jt} X_{jit} + \sum_{k=1}^K \gamma_{kt} Z_{kit} + \epsilon_{it}\]</span> where <span class="math inline">\(P_{it}\)</span> represents the price of item <span class="math inline">\(i\)</span> at time <span class="math inline">\(t\)</span> <span class="math inline">\((t=1, ..., T)\)</span>; <span class="math inline">\(D_{it}\)</span> is a time dummy variable taking the value of 1 if item <span class="math inline">\(i\)</span> is sold in period <span class="math inline">\(t\)</span> and 0 otherwise, <span class="math inline">\(X_{jit}\)</span> <span class="math inline">\((j=1, ..., J)\)</span> is a set of <span class="math inline">\(j\)</span> observed attributes of item <span class="math inline">\(i\)</span> at time <span class="math inline">\(t\)</span>; <span class="math inline">\(Z_{kit}\)</span> is a set of <span class="math inline">\(k\)</span> <span class="math inline">\((k=1, ..., K)\)</span> unobserved attributes that also influence the price; and <span class="math inline">\(\epsilon_{it}\)</span> is a random (white noise) error term.</p>
+<p>The repeat sales model can be derived from the hedonic model,[^5] if the hedonic model is differenced with respect to consecutive sales of items that have sold more than once in the sample period <span class="citation">[@McMillen2012]</span>. The standard model may be formulated as the change in the log of the sales price of item <span class="math inline">\(i\)</span> that sold at time <span class="math inline">\(t\)</span> and an earlier time <span class="math inline">\(s\)</span>: <span class="math display">\[\ln P_{it} - \ln P_{is} = (\sum_{t=1}^T \delta_t D_{it} - \sum_{s=1}^T \delta_s D_{is})  + (\sum_{j=1}^J \beta_{jt} X_{jit} - \sum_{j=1}^J \beta_{js} X_{jis}) + (\sum_{k=1}^K \gamma_{kt} Z_{kit} - \sum_{k=1}^K \gamma_{ks} Z_{kis}) + (\epsilon_{it} - \epsilon_{is})\]</span> <span class="math display">\[\ln P_{it} - \ln P_{is} = (\delta_t D_{it} - \delta_s D_{is})  + (\beta_{jt} X_{jit} - \beta_{js} X_{jis}) + (\gamma_{kt} Z_{kit} - \gamma_{ks} Z_{kis}) + (\epsilon_{it} - \epsilon_{is})\]</span></p>
+<p>If the attributes (<span class="math inline">\(X\)</span> and <span class="math inline">\(Z\)</span>) of item <span class="math inline">\(i\)</span> and the implicit prices (<span class="math inline">\(\beta\)</span> and <span class="math inline">\(\gamma\)</span>) are constant between sales, the equation reduces to the standard estimating equation: <span class="math display">\[\ln \frac{P_{it}}{P_{is}} = \sum_{t=1}^T \delta_t G_{it} + u_{it}\]</span> where <span class="math inline">\(P_{it}\)</span> is the purchase price for item <span class="math inline">\(i\)</span> in time <span class="math inline">\(t\)</span>; <span class="math inline">\(\delta_t\)</span> is the parameter to be estimated for time <span class="math inline">\(t\)</span>; <span class="math inline">\(G_{it}\)</span> represents a time dummy equal to 1 in period <span class="math inline">\(t\)</span> when the resale occurs, -1 in period <span class="math inline">\(s\)</span> when the previous sale occurs, and 0 otherwise; and <span class="math inline">\(u_{it}\)</span> is a white noise residual.</p>
+<p><span class="math display">\[\ln P_{itb} - \ln P_{hsb} = \sum_{j=1}^J \beta_j (X_{itbj} - X_{hsbj}) + \sum_{t=0}^T \delta_t G_{it} + \epsilon_{ithsb}\]</span> where <span class="math inline">\(G_{it}\)</span> is again a time dummy equal to 1 if the later sale in the pair occurred in quarter <span class="math inline">\(t\)</span>, -1 if the former sale in the pair occurred in quarter <span class="math inline">\(s\)</span>, and 0 otherwise; and <span class="math inline">\(\epsilon_{srabj}\)</span> again represents a white noise residual.</p>
+<p>eliminated the time-invariant and unobserved effects: <span class="math display">\[\ln P_{it} - \ln P_{is} = (X_{it} - X_{is}) \beta + (\delta_t - \delta_s) + (u_{it} - u_{is})\]</span></p>
 
 
 </div>

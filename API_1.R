@@ -19,6 +19,7 @@ library(xtable)
 library(scales)
 library(tseries)
 library(urca)
+library(lmtest)
 
 #setwd("C:/Users/Laurie/OneDrive/Documents/BING/METRICS/PhD Proposal Readings/Art Price Index")
 setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\Art Price Index\\R Code")
@@ -206,7 +207,7 @@ g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
 g
 
 #Plot total turnover and annual median price
-artplot1 <- aggregate(artdata$hammer_price, by=list(artdata$year), sum, na.rm=TRUE)
+artplot1 <- aggregate(artdata$hammer_price, by=list(artdata$year), FUN = sum, na.rm=TRUE)
 artplot2 <- aggregate(artdata$hammer_price, by=list(artdata$year), FUN = median, na.rm=TRUE)
 artplot <- merge(artplot1, artplot2, by="Group.1",all.x=TRUE)
 names(artplot) <- c("Date","Turnover","Median_Price")
@@ -1573,6 +1574,51 @@ colnames(fullrep) <- c("id","time0","time1","price0","price1","sign0","sign1","d
     ps.RS_results$pairs <- nrow(fullrep)
     
 
+    
+    
+    
+    ##=====================##
+    #do the same but expand it to not match by title or authenticity dummies or area
+    #check for duplicates (how many)
+    sum(duplicated(artdata[,c("artist","med_code","nr_works")]))
+    rsartdata3 <- artdata[allDup(artdata[,c("artist","med_code","nr_works")]),]
+    rsartdata3 <- transform(rsartdata3, id = as.numeric(interaction(artist,med_code,factor(nr_works), drop=TRUE)))
+    
+    repdata3 <- cbind(repsaledata(rsartdata3$lnprice,rsartdata3$counter,rsartdata3$id),
+                      repsaledata(rsartdata3$lnarea,rsartdata3$counter,rsartdata3$id)[,4:5],
+                      repsaledata(rsartdata3$ah_code,rsartdata3$counter,rsartdata3$id)[,4:5],
+                      repsaledata(rsartdata3$dum_signed,rsartdata3$counter,rsartdata3$id)[,4:5],
+                      repsaledata(rsartdata3$dum_dated,rsartdata3$counter,rsartdata3$id)[,4:5])
+    repdata3 <- repdata3[complete.cases(repdata3),]
+    colnames(repdata3) <- c("id","time0","time1","price0","price1","lnarea0","lnarea1","ah_code0","ah_code1","sign0","sign1","date0","date1")
+    
+    dy <- repdata3$price1 - repdata3$price0
+    darea <- repdata3$lnarea1 - repdata3$lnarea0
+    dsign <- repdata3$sign1 - repdata3$sign0
+    ddate <- repdata3$date1 - repdata3$date0
+    ah0 <- model.matrix(~repdata3$ah_code0)
+    ah1 <- model.matrix(~repdata3$ah_code1)
+    dah <- ah1 - ah0
+    
+    timevar <- levels(factor(c(repdata3$time0, repdata3$time1)))
+    nt = length(timevar)
+    n = length(dy)
+    xmat <- array(0, dim = c(n, nt - 1))
+    for (j in seq(1 + 1, nt)) {
+        xmat[,j-1] <- ifelse(repdata3$time1 == timevar[j], 1, xmat[,j-1])
+        xmat[,j-1] <- ifelse(repdata3$time0 == timevar[j],-1, xmat[,j-1])
+    }
+    colnames(xmat) <- paste("Time", seq(1 + 1, nt))
+    
+    ps.RS <- lm(dy ~ darea + dah + dsign + ddate + xmat + 0)
+    RS_index3 <- summary(ps.RS)$coefficients[grepl("Time", rownames(summary(ps.RS)$coefficients)),1]
+    RS_index3 <- as.data.frame(RS_index3)
+    RS_index3$index <- exp(RS_index3$RS_index3)*100
+    RS_index3$Date <- levels(rsartdata3$timedummy)[-1]
+    RS_index3 <- RS_index3[,c(2,3)]
+    
+    RS_indices <- merge(RS_indices, RS_index3, by="Date", all=TRUE)
+    
 ##==============##
 ## DIAGNIOSTICS ##
 ##==============##
@@ -1590,7 +1636,7 @@ modeldata <- subset(artdata, artdata$rank_all<101)
 model_100 <- lm(expl_vars, data=modeldata)
 summary(model_100)$coefficients
 
-
+resettest(model, power=2, type="regressor")
 
 ##============##
 ## EVALUATION ##
@@ -1819,8 +1865,9 @@ for(i in 1:ncol(y_indices)) {
 #Calculate critical values
 K1 <- numeric()
 K2 <- numeric()
-K3 <- numeric()
-K4 <- numeric()
+#K3 <- numeric()
+#K4 <- numeric()
+#b <- numeric()
 
 for(j in 12:64) {
     set.seed(123)                           #for replicability
@@ -1843,24 +1890,44 @@ for(j in 12:64) {
         dy1 <- DY1[(burn+1):(obs+burn)]             
         ly1 <- Y1[burn:(obs+burn-1)] 
         trend <- 1:obs
-        #constant <- seq(sqrt(obs),sqrt(obs),length.out = obs)
+        #constant <- seq(obs,obs,length.out = obs)
+        #constant0.01 <- seq(obs^-0.01,obs^-0.1,length.out = obs)
+        #constant5 <- seq(obs^-5,obs^-5,length.out = obs)
         
         EQ1 <- lm(dy1 ~ 0 + ly1)       
         tstat.nc <- rbind(tstat.nc,summary(EQ1)$coefficients[1,3]) 
         EQ2 <- lm(dy1 ~ ly1)            
         tstat.c <- rbind(tstat.c,summary(EQ2)$coefficients[2,3])  
-        EQ3 <- lm(dy1 ~ lag(y1) + trend)    
-        tstat.ct <- rbind(tstat.ct,summary(EQ3)$coefficients[2,3]) 
-        #EQ4 <- lm(dy1 ~ 0 + constant + ly1)    
-        #tstat.lc <- rbind(tstat.lc,summary(EQ4)$coefficients[2,3]) 
+        
+        #EQ5 <- nls(dy1 ~ constant^b + c*ly1, start = list(b=-.01, c=-0.3))
+        #tstat.ct <- rbind(tstat.ct,summary(EQ5)$coefficients[2,3]) 
+        
+        #EQ3 <- lm(dy1 ~ 0 + constant0.01 + ly1)
+        #tstat.lc1 <- rbind(tstat.ct,summary(EQ3)$coefficients[2,3]) 
+        #EQ4 <- lm(dy1 ~ 0 + constant5 + ly1)    
+        #tstat.lc2 <- rbind(tstat.lc,summary(EQ4)$coefficients[2,3]) 
     }                                       
     #hist(tstat.nc)
-    K1 <- rbind(K1,quantile(tstat.nc, probs=c(0.9,0.95,0.99)))
-    K2 <- rbind(K2,quantile(tstat.c, probs=c(0.9,0.95,0.99)))
-    K3 <- rbind(K3,quantile(tstat.ct, probs= c(0.9,0.95,0.99)))
-    #K4 <- rbind(K4,quantile(tstat.lc, probs= c(0.9,0.95,0.99)))
+    K1 <- rbind(K1,quantile(tstat.nc, probs=c(0.95,0.99)))
+    K2 <- rbind(K2,quantile(tstat.c, probs=c(0.95,0.99)))
+    #K3 <- rbind(K3,quantile(tstat.lc1, probs= c(0.9,0.95,0.99)))
+    #K4 <- rbind(K4,quantile(tstat.lc2, probs= c(0.9,0.95,0.99)))
 }   #Provides a vector of critical values
 
+
+library(minpack.lm)
+
+#simulate some data
+set.seed(20160227)
+x<-seq(0,50,1)
+y<-((runif(1,10,20)*x)/(runif(1,0,10)+x))+rnorm(51,0,1)
+#for simple models nls find good starting values for the parameters even if it throw a warning
+m<-nls(y~a*x/(b+x))
+#get some estimation of goodness of fit
+cor(y,predict(m))
+#plot
+plot(x,y)
+lines(x,predict(m),lty=2,col="red",lwd=3)
 
 ##---------------------------------------------------------------------------
 #plot die test stats en critical values 

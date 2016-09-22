@@ -222,6 +222,25 @@ par(xpd=TRUE)
 legend(5,-90,legend=c("Median Price", "Turnover (Rm)"), lty=c(1,0), pch=c(NA, 15), col=c("#F8766D","#00BFC4"),horiz = TRUE, bty="n", cex=0.8)
 
 
+#boxplot hammer prices (in three periods)
+artplot <- artdata[,c("year","lnprice")]
+artplot$period <- "2000-2003"
+for(i in 1:nrow(artplot)) {
+    if(artplot[i,"year"] > 2003 & artplot[i,"year"] < 2008) { artplot[i,"period"] <- "2004-2007"}
+    if(artplot[i,"year"] > 2007 & artplot[i,"year"] < 2012) { artplot[i,"period"] <- "2008-2011"}
+    if(artplot[i,"year"] > 2011) { artplot[i,"period"] <- "2012-2015"}
+}
+artplot$period <- factor(artplot$period)
+
+g <- ggplot(artplot, aes(x=period, y=lnprice, fill=period))
+g <- g + stat_boxplot(geom = "errorbar", stat_params = list(width = 0.5)) 
+g <- g + geom_boxplot() + guides(fill=FALSE) 
+g <- g + ylab("log of Price")
+g <- g + xlab("")
+g <- g + theme(axis.text.x = element_text(size=14))
+g
+
+
 g <- ggplot(artdata, aes(x=ah_code, fill = ah_code))
 g <- g + geom_bar(stat="bin")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
@@ -1629,14 +1648,49 @@ colnames(fullrep) <- c("id","time0","time1","price0","price1","sign0","sign1","d
 # Try themes and materials with grepl
 
 
-list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
+list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
                     "nr_works","lnrep","timedummy")
-expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
-modeldata <- subset(artdata, artdata$rank_all<101)
-model_100 <- lm(expl_vars, data=modeldata)
-summary(model_100)$coefficients
+expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+"))) 
+modeldata <- artdata 
+model <- lm(expl_vars, data=modeldata)
 
 resettest(model, power=2, type="regressor")
+
+resids <- rstandard(model)
+
+hist(resids)
+qqnorm(resids)
+qqline(resids)
+
+library(car)
+# Normality of Residuals
+# qq plot for studentized resid
+qqPlot(model, main="QQ Plot")
+# distribution of studentized residuals
+library(MASS)
+sresid <- studres(model) 
+hist(sresid, freq=FALSE, 
+     main="Distribution of Studentized Residuals")
+xfit<-seq(min(sresid),max(sresid),length=40) 
+yfit<-dnorm(xfit) 
+lines(xfit, yfit)
+
+jarque.bera.test(resids)
+shapiro.test(resids)
+
+# Evaluate homoscedasticity
+# non-constant error variance test
+ncvTest(model)
+# plot studentized residuals vs. fitted values 
+spreadLevelPlot(model)
+
+# Test for Autocorrelated Errors
+#durbinWatsonTest(fit)
+
+# Global test of model assumptions
+library(gvlma)
+gvmodel <- gvlma(model) 
+summary(gvmodel)
 
 ##============##
 ## EVALUATION ##
@@ -1676,23 +1730,6 @@ rw_indices <- all_indices  ##Re-weighted to 2000=100
 for(i in 1:7) {
     rw_indices[,i] <- all_indices[,i]/mean(all_indices[1:4,i])*100 
 }
-
-
-temp_indices <- all_indices
-colnames(temp_indices) <- c("Date","Hedonic","Adj1y","Adj2y","Roll","ps.RS(1%)","ps.RS(0.1%)","ps.RS(0)","Median")
-# Check correlations (in levels and growth rates)
-source("corstarsl.R")
-for(i in 2:ncol(temp_indices)) {temp_indices[,i] <- as.numeric(temp_indices[,i]) }
-ts.all_indices <- as.ts(temp_indices[,-1],start =c(2000,1),end=c(2015,4),frequency=4) 
-
-xt <- xtable(corstarsl(ts.all_indices), caption="Correlations in Levels")
-print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
-
-dl.indices <- as.data.frame(diff(log(ts.all_indices)))
-xt <- xtable(corstarsl(dl.indices), caption="Correlations in DLogs")
-print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
-
-#print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"), scalebox = 0.9)
 
 
 # Check annual growth rates 
@@ -1750,6 +1787,53 @@ eval <- cbind(vol=vol,ac.1=ac.1[1:8])
 xt <- xtable(eval, caption="Smoothness Indicators")
 print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
 
+#----------------
+#spectral density
+
+k <- 3
+l <- 3
+datavec <- all_indices[,5]
+
+## Step 1: Calculate and record power spectral density using 'speccalcs'
+speccalcs <- spec.pgram(datavec,spans=c(k,l),demean=TRUE,plot=FALSE)
+spectra <- speccalcs$spec
+
+## Step 2 Take natural logs of power spectral frequencies
+logspec <- log(spectra)
+n <- length(logspec)
+m <- n/2
+
+p1 <- mean(logspec[1:m])
+p2 <- mean(logspec[(m+1):n])
+
+smcoef <- p1-p2
+smcoefvar <- (pi^2)/6*((1/m)+(1/(n-m)))
+smcoefse <- sqrt(smcoefvar)
+list(smcoef,smcoefse)
+
+
+function (datavec,k,l) {
+    # calculates smoothness coefficient for 'datavec' with 
+    # 'datavec' is vector of time-series data
+    # 'k' specifies the width of the Daniell window which smooths the raw periodogram 
+    
+    ## Step 1: Calculate and record power spectral density using 'speccalcs'
+    speccalcs <- spec.pgram(datavec,spans=c(k,l),demean=TRUE,plot=FALSE)
+    spectra <- speccalcs$spec
+    
+    ## Step 2 Take natural logs of power spectral frequencies
+    logspec <- log(spectra)
+    n <- length(logspec)
+    m <- n/2
+    
+    p1 <- mean(logspec[1:m])
+    p2 <- mean(logspec[(m+1):n])
+    
+    smcoef <- p1-p2
+    smcoefvar <- (pi^2)/6*((1/m)+(1/(n-m)))
+    smcoefse <- sqrt(smcoefvar)
+    list(smcoef,smcoefse)
+}
 
 #sd(ps.RS_test$index_all)
 #acf(ps.RS_test$index_all,na.action = na.pass, plot = FALSE, lag.max = 1)
@@ -1792,6 +1876,16 @@ g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.title=element_blank())
 g
+
+
+all_assets <- cbind(all_indices[,c(6,10)],assets[,c(2,3,4,6,7,8)])
+colnames(all_assets) <- c("SA.Art_Adj2y","SA.Art_ps.RS2","SA.Bonds","SA.Equity","SA.Property","US.Art","UK.Art","French.Art")
+ts.all_assets <- as.ts(all_assets,start =c(2000,4),end=c(2015,4),frequency=4) 
+#xt <- xtable(corstarsl(ts.all_assets), caption="Correlations in Levels")
+#print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+dl.all_assets <- as.data.frame(diff(log(ts.all_assets)))
+xt <- xtable(corstarsl(dl.all_assets), caption="Correlations of returns (dlogs)")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"), scalebox = 0.9)
 
 
 #==============================#

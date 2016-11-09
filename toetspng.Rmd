@@ -1,0 +1,39 @@
+---
+output: 
+    pdf_document:
+        fig_caption: yes
+        number_sections: true
+fontsize: 12pt
+geometry: margin=1in
+bibliography: References.bib
+csl: harvard.csl
+---
+<!-- maketile -->
+\begin{center}
+\Large\scshape{Modelling South African Art Prices: An analysis of post-2000 price behaviour} \\ 
+\vspace{1em}
+\large\normalfont{Laurie Binge}\footnote{PhD candidate at the Department of Economics at the University of Stellenbosch.} \\
+\large\normalfont{Wimpie Boshoff}\footnote{Associate Professor at the Department of Economics at the University of Stellenbosch.} \\
+\normalsize\textit{Stellenbosch University} \\
+\normalsize\normalfont{This draft: \today} 
+\end{center}
+\begin{small}
+
+The South African art market has grown markedly over the last two decades, and yet there is currently very little research on this market. This paper aims to make three contributions to the literature. The first is to estimate new quality-adjusted price indices for South African art since the turn of the millennium. The paper estimates central tendency indices, as a baseline for comparisons, as well as various hedonic indices that control for quality-mix or compositional changes over time. The second contribution is to estimate alternative art price indices by applying a simple hybrid repeat sales method to art prices. This approach addresses the problem of lack of repeat sales observations in the data and to some extent the potential omitted variable bias inherent in the hedonic method. This has not been attempted for art prices in any country. The hedonic and hybrid repeat sales indices seem to point to the same general trend in South African art prices. According to these measures, the South African art market experienced a huge price increase in the run-up to the Great Recession. The third contribution of the paper is to study the art price indices for evidence of a bubble in the South African art market over the period. The hedonic and hybrid repeat sales indices seem to point to consistent evidence of mildly explosive price behaviour in the run-up to the Great Recession. 
+
+\vspace{0.5em}
+\noindent{\textbf{Keywords:} South African Art, Hedonic Price Index, Pseudo Repeat Sales, Explosive Prices }
+\end{small}
+\renewcommand{\thefootnote}{\arabic{footnote}}
+
+#Introduction
+Contemporary African art has experienced a surge in popularity over the last few decades. The South African art market in particular has received a lot of attention, and has grown markedly over the last two decades, both in terms of the number of transactions and total turnover [@Fedderke2014]. Artworks by South African artists have reached record prices at international and local auctions, both for the country's "masters" - including Irma Stern, Walter Battiss, and JH Pierneef - and contemporary artists like William Kentridge [@Naidoo2013]. In 2011 Bonhams in London sold Irma Stern's *"Arab Priest"* for a hammer prices of £2.7 million, a world record for a South African artwork at auction. Also in 2011, Stern's *"Two Arabs"* was sold by Strauss & Co. for a hammer price of R19 million, a record for a South African auction. The increase in interest in South African art, both locally and abroad, has sparked a vibrant market for collectors and investors. 
+
+
+
+```{r figure3, echo=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Relationship between prices and artwork sizes, by medium"}
+#Plot surface area and prices by medium
+library(png)
+library(grid)
+grid.raster(readPNG("area2.png"))
+```

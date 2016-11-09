@@ -69,32 +69,33 @@ g
 
 #boxplot hammer prices (in three periods)
 artplot <- artdata[,c("year","lnprice")]
-artplot$period <- "2000-2003"
-for(i in 1:nrow(artplot)) {
-    if(artplot[i,"year"] > 2003 & artplot[i,"year"] < 2008) { artplot[i,"period"] <- "2004-2007"}
-    if(artplot[i,"year"] > 2007 & artplot[i,"year"] < 2012) { artplot[i,"period"] <- "2008-2011"}
-    if(artplot[i,"year"] > 2011) { artplot[i,"period"] <- "2012-2015"}
-}
-artplot$period <- factor(artplot$period)
-g <- ggplot(artplot, aes(x=period, y=lnprice, fill=period))
+artplot$period <- factor(artplot$year)
+g <- ggplot(artplot, aes(x=period, y=lnprice, fill="#00BFC4"))
 g <- g + stat_boxplot(geom = "errorbar", stat_params = list(width = 0.5)) 
 g <- g + geom_boxplot() + guides(fill=FALSE) 
-g <- g + ylab("log of Price")
+g <- g + ylab("log of Hammer Prices")
 g <- g + xlab("")
-g <- g + theme(axis.text.x = element_text(size=14))
-g
+g 
 
 
-
+#dev.copy(png,"area.png")
+png(filename = "area2.png", width = 600, height = 360)
 #Plot surface area and prices by medium
-artplot <- subset(artdata)
+artplot <- subset(artdata, med_code!="NA")
 g <- ggplot(artplot, aes(x=lnarea, y=lnprice))
 g <- g + geom_point(size = 2, alpha = 0.5, aes(colour = med_code))
 g <- g + ylab("log of Price")
-g <- g + xlab("log of Area")
+g <- g + xlab("log of Surface Area")
 g <- g + labs(colour = "Medium")
 g <- g + guides(colour = guide_legend(override.aes = list(size=5)))
 g
+dev.off()
+
+library(png)
+library(grid)
+grid.raster(readPNG("area2.png"))
+
+
 
 ##------------------------------------------##
 ##---ARTIST REPUTATION VARIABLE (Kraussl)---##
@@ -187,6 +188,9 @@ artdata$med_code <- factor(artdata$med_code, labels=c("NA","Drawing", "Watercolo
 #The result: index of average price per artist adjusted for quality, relative to the base artist 
 #It can replace the artist dummies as a continuous variable in a second regression of equation 1 
 
+
+#dev.copy(png,"area.png")
+png(filename = "reputation.png", width = 600, height = 360)
 #Plot artist reputation index and prices
 artplot <- subset(artdata, med_code!="NA")
 g <- ggplot(artplot, aes(x=lnrep, y=lnprice))
@@ -196,6 +200,12 @@ g <- g + xlab("log of Artist Reputation")
 g <- g + labs(colour = "Medium")
 g <- g + guides(colour = guide_legend(override.aes = list(size=5)))
 g
+dev.off()
+
+library(png)
+library(grid)
+grid.raster(readPNG("reputation.png"))
+
 
 ##----------------------##
 ##---CENTRAL TENDENCY---##

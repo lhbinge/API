@@ -13,6 +13,7 @@ csl: harvard.csl
 \Large\scshape{Modelling South African Art Prices: An analysis of post-2000 price behaviour} \\ 
 \vspace{1em}
 \large\normalfont{Laurie Binge}\footnote{PhD candidate at the Department of Economics at the University of Stellenbosch.} \\
+\large\normalfont{Wimpie Boshoff}\footnote{Associate Professor at the Department of Economics at the University of Stellenbosch.} \\
 \normalsize\textit{Stellenbosch University} \\
 \normalsize\normalfont{This draft: \today} 
 \end{center}
@@ -281,14 +282,9 @@ Hedonic art price models typically include characteristics that are relatively e
 
 ```{r figure3, echo=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Relationship between prices and artwork sizes, by medium"}
 #Plot surface area and prices by medium
-artplot <- subset(artdata)
-g <- ggplot(artplot, aes(x=lnarea, y=lnprice))
-g <- g + geom_point(size = 2, alpha = 0.5, aes(colour = med_code))
-g <- g + ylab("log of Price")
-g <- g + xlab("log of Surface Area")
-g <- g + labs(colour = "Medium")
-g <- g + guides(colour = guide_legend(override.aes = list(size=5)))
-g
+library(png)
+library(grid)
+grid.raster(readPNG("area2.png"))
 ```
 
 *Auction house*: Dummy variables for the auction houses are also typically included. The more prominent auction houses usually have a positive effect on prices. One reason might be that the more renowned auction houses will offer higher quality work [@Kraussl2010a]. Thus, the variables might be picking up otherwise unobservable quality differences and do not necessarily reflect auction house certification [@Renneboog2012]. Moreover, different auction houses charge different commissions to both buyers and sellers. For example, Strauss & Co reported a buyer's premium of 10%-15%, while Bonhams charged premiums of up to 25% [@Olckers2015]. The hammer prices exclude these premiums and are therefore not a perfect measure of the cost to the buyer and revenue to the seller. For the purposes of a price index the auction house dummies should capture the different premiums charged by the auction houses. 
@@ -418,14 +414,9 @@ Figure 4 illustrates the positive relationship between artwork prices and the re
 
 ```{r figure4, echo=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Relationship between prices and reputation index"}
 #Plot artist reputation index and prices
-artplot <- subset(artdata, med_code!="NA")
-g <- ggplot(artplot, aes(x=lnrep, y=lnprice))
-g <- g + geom_point(size = 2, alpha = 0.5, aes(colour = med_code))
-g <- g + ylab("log of Price")
-g <- g + xlab("log of Reputation")
-g <- g + labs(colour = "Medium")
-g <- g + guides(colour = guide_legend(override.aes = list(size=5)))
-g
+library(png)
+library(grid)
+grid.raster(readPNG("reputation.png"))
 ```
 
 #Results 

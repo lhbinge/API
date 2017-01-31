@@ -1,8 +1,8 @@
 ---
-title: "The South African Art Market"
-subtitle: "Explosive Behaviour"
+title: "Modelling South African Art Prices"
+subtitle: "An analysis of post-2000 price behaviour"
 author: Laurie Binge
-date: "15 February 2016"
+date: "17 November 2016"
 output:
   beamer_presentation:
     includes:
@@ -19,21 +19,30 @@ output:
 
 ## The South African Art Market
 
-Surge in popularity of Modern and Contemporary South African art 
-
-Huge increase in prices in run-up to Great Recession   
+Surge in popularity of South African art 
 
 Record prices at international and local auctions   
 
-- Irma Stern's *"Arab Priest"* sold for £2.7m in 2011 Bonhams in London 
-- Irma Stern's *"Two Arabs"* sold for R19m by Strauss & Co
+- Irma Stern's *"Arab Priest"* sold for £2.7m in 2011 by Bonhams 
+- Irma Stern's *"Two Arabs"* sold for R19m in 2011 by Strauss & Co
 
-Prompted many claims of a "bubble"" in the art market   
-  
+Prompted many claims of a "bubble" in the art market   
+
 Objectives:  
 
-1) Construct indicators of art market prices over time
-2) Test for a "bubble" in the SA art market
+1) Construct SA art price indices over time
+2) Use simple hybrid repeat sales method (robustness test)
+3) Test for evidence of a bubble in SA art market prices (application)
+
+
+## Arab Priest - Irma Stern
+![alt text](Arab_Priest.png)
+
+## Two Arabs - Irma Stern
+![alt text](Two Arabs.jpg)
+
+
+# Data
 
 ```{r cleaning, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
 ##=====================##
@@ -53,8 +62,9 @@ suppressMessages(library(xtable))
 suppressMessages(library(scales))
 suppressMessages(library(tseries))
 suppressMessages(library(urca))
+suppressMessages(library(mFilter))
 
-setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\PhD Proposal Readings\\Art Price Index\\R Code")
+setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\Art Price Index\\R Code")
 artdata <- read.csv("Auction database.csv", header=TRUE, sep=",",na.strings = "", skipNul = TRUE, 
                     colClasses=c("character","numeric","numeric","numeric","numeric","factor","factor","factor","character",
                                  "factor","factor","factor","character","factor","factor","factor","numeric","character",
@@ -88,95 +98,95 @@ rankings$n <- NULL
 artdata <- merge(artdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
 ```
 
-## Arab Priest - Irma Stern
-![alt text](Arab_Priest.png)
-
-# Data
+```{r loadrep, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
+#------------------------------------------------------------------------------------------------------------------------------
+#Load pre-calculated dataset (for speed) from API_3.R
+artdata <- read.csv("artdata_lnrep.csv", header=TRUE)
+artdata$med_code <- factor(artdata$med_code, labels=c("NA","Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut",
+                                                      "Mixed Media","Sculpture","Photography", "Other"))
+```
 
 ## South African Art Auction Data
 
-AuctionVault/Citadel auction data:
+Auction data from AuctionVault:
 
 - 2000-2015
 - 8 auction houses
-- 50,560 sales 
-- 4,361 artists
-- Various characteristics for each records
+- 52,059 sales 
+- 4,503 artists
+- Various characteristics for each record
 
 Public auction prices vs. private prices   
 
 Bought-in lots
 
 
-## Turnover
+## Total Sales by Auction House
 ```{r figure1, echo=FALSE, cache = TRUE, fig.height=4, fig.width=6.5, fig.cap="Turnover (sum of hammer prices) by auction house (2000-2015)"}
-#Plot turnover by auction house
-artplot <- aggregate(artdata$hammer_price, by=list(artdata$year,artdata$ah_code), FUN = sum, na.rm=TRUE)
+#Plot total sales by auction house
+artplot <- aggregate(artdata$hammer_price, by=list(artdata$year,artdata$ah_code), FUN = length)
 g <- ggplot(artplot, aes(x=Group.1, y=x,fill=Group.2))
 g <- g + geom_bar(stat="identity")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + scale_fill_discrete(name="Auction House")
 g <- g + scale_y_continuous(labels=comma)
-g <- g + ylab("Turnover (Sum of Hammer Price)")
+g <- g + ylab("Total Number of Sales (Auction Lots)")
 g <- g + xlab("Date")
 g
 ```
 
-## Sales and Prices
-```{r figure2, echo=FALSE, cache = TRUE, fig.height=4, fig.width=6.5, fig.cap="Median hammer prices and total sales (lots) at auction (2000-2015)"}
-#Plot total sales and annual median price
-artplot1 <- aggregate(artdata$hammer_price, by=list(artdata$year), length)
-artplot2 <- aggregate(artdata$hammer_price, by=list(artdata$year), FUN = median, na.rm=TRUE)
-artplot <- merge(artplot1, artplot2, by="Group.1",all.x=TRUE)
-names(artplot) <- c("Date","Total Sales","Median Price")
-artplot <- melt(artplot, id="Date") 
-g <- ggplot(artplot, aes(x=Date,value,colour=variable,fill=variable))
-g <- g + geom_bar(subset=.(variable=="Total Sales"),stat="identity")
-g <- g + geom_line(subset=.(variable=="Median Price"),size=1)
-g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
-g 
-```
 
-# Methodology
+# Methodology and Results
 
 ## Measurement Methodology
 
-Accurate measurement is difficult:
+Construction of price indices for unique assets is challenging:
 
-- Assets are heterogeneous (unique) & involve large transaction costs 
-- Less liquid than traditional assets & low transaction frequency
-- Small part of the overall market is traded at any given time 
-- Composition & quality not constant
+- Low transaction frequency
+- Only a small part of the overall market is traded at any given time 
+- Artworks are unique (heterogeneous) 
+- Composition or quality-mix not constant over time
+- Difficult to compare prices over time
 
 Estimation methodologies:
 
-1. Naïve or central tendency methods
-2. Repeat sales regressions
-3. Hedonic regressions
+1. Central tendency methods
+2. Hedonic regressions
+3. Repeat sales regressions
 4. Hybrid models
 
 
 ##Central Tendency methods
-Average (median) price over time
+Simple measure of central tendency price distribution (average or median)
 
-Slight improvement by stratification e.g. ABSA
+Do not adequately control for quality-mix changes over time
 
-- Median price 
-- Stratified Fisher indices
+Still dependent on the mix of objects that come to market 
+
+Slight improvement by stratification (e.g. ABSA)
+
+Estimated as a baseline:
+
+- Median prices 
+- Stratified Fisher indices (by artist and medium) 
+
 
 ```{r naive, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
+##----------------------##
+##---CENTRAL TENDENCY---##
+##----------------------##
 naive_index <- aggregate(artdata$price, by=list(artdata$timedummy), FUN=median, na.rm=TRUE)
 naive_index$index <- naive_index$x
 naive_index$index <- naive_index$index/naive_index[1,2]*100
 naive_index$index <- as.numeric(naive_index$index)
-colnames(naive_index) <- c("Date","Median","Index_Naive")
+colnames(naive_index) <- c("Date","Median","Median_Index")
 
+#------------------------------
 #Stratify by artist and medium
-#get quantity and median price per group per quarter     
-strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist, artdata$med_code), FUN=mean)
+#get quantity and median price per group per quarter    
+strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist, artdata$med_code), FUN=median)
 strat_q <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist, artdata$med_code), FUN=sum)
 strat_q$x <- strat_q$x/strat_p$x        #the count q
-strat_p <- aggregate(artdata$price, by=list(artdata$timedummy, artdata$artist, artdata$med_code), FUN=median)
 
 chain2 <- function(strat_p, strat_q, kwartaal1,kwartaal2) {
     strat_p1 <- subset(strat_p, strat_p$Group.1==kwartaal1)
@@ -193,7 +203,7 @@ chain2 <- function(strat_p, strat_q, kwartaal1,kwartaal2) {
     return(c(Lasp,Paas))
 }
 
-datum <- c("2000 Q1","2000 Q2","2000 Q3","2000 Q4","2001 Q1","2001 Q2","2001 Q3","2001 Q4","2002 Q1","2002 Q2","2002 Q3","2002 Q4","2003 Q1","2003 Q2","2003 Q3","2003 Q4","2004 Q1","2004 Q2","2004 Q3","2004 Q4","2005 Q1","2005 Q2","2005 Q3","2005 Q4","2006 Q1","2006 Q2","2006 Q3","2006 Q4","2007 Q1","2007 Q2","2007 Q3","2007 Q4","2008 Q1","2008 Q2","2008 Q3","2008 Q4","2009 Q1","2009 Q2","2009 Q3","2009 Q4","2010 Q1","2010 Q2","2010 Q3","2010 Q4","2011 Q1","2011 Q2","2011 Q3","2011 Q4","2012 Q1","2012 Q2","2012 Q3","2012 Q4","2013 Q1","2013 Q2","2013 Q3","2013 Q4","2014 Q1","2014 Q2","2014 Q3","2014 Q4","2015 Q1","2015 Q2","2015 Q3","2015 Q4")
+datum <- levels(artdata$timedummy)
 
 ketting2 <- chain2(strat_p,strat_q,datum[1],datum[2])
 ketting2 <- rbind(ketting2,chain2(strat_p,strat_q,datum[2],datum[3]))
@@ -207,13 +217,17 @@ for(i in 2:63) {                                #use the growth rates to generat
     ketting2$V4[i] <- ketting2$V4[(i-1)]*ketting2$V3[i]
 }
 ketting2$Date <- as.factor(datum[-1])
-colnames(ketting2) <- c("Las","Paas","Fisher","Index_Fisher","Date")
+colnames(ketting2) <- c("Las","Paas","Fisher","Fisher_Index","Date")
+
+naive_index <- merge(naive_index, ketting2, by.x="Date", by.y="Date",all=TRUE)
+naive_index[1,4:7] <- 100
+naive_indices <- naive_index[,c(1,3,7)]
 ```
 
 ##Central Tendency Indices
-```{r figure3, echo=FALSE, cache = TRUE, fig.height=4, fig.width=6.5, fig.cap="Central tendency South African art price indices (2000Q1=100)"}
-index_plot <- merge(ketting2, naive_index, by.x="Date", by.y="Date",all.x=TRUE)
-index_plot <- index_plot[,c(1,5,7)]
+```{r figure5, echo=FALSE, cache = TRUE, fig.height=4, fig.width=6.5, fig.cap="Central tendency South African art price indices (2000Q1=100)"}
+index_plot <- naive_indices
+index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 index_plot <- melt(index_plot, id="Date")  # convert to long format
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 1) 
@@ -222,129 +236,59 @@ g <- g + ylab("Index")
 g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
-g
+g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
+g 
 ```
 
 ##Hedonic regression methodology
-Prices described by characteristics:
-$$\ln P_{it} =\alpha+\sum_{j=1}^z\beta_jX_{ij}+\sum_{t=1}^\tau\gamma_tD_{it}+\epsilon_{it}$$
-
-Strip observable characteristics to obtain "standard asset" 
+Prices modelled as a function of asset attributes:
+$$\ln P_{it} = \sum_{t=1}^T \delta_t D_{it} + \sum_{j=1}^J \beta_{jt} X_{jit} + \sum_{k=1}^K \gamma_{kt} Z_{kit} + \epsilon_{it}$$
 
 Control for quality by attributing implicit prices to characteristics
 
-Omitted variable & misspecification bias
+Strip observable characteristics to obtain "standard asset" 
+
+Time dummies provide "pure price effect"
+
+Potential omitted variable bias
+
 
 ##Artwork Attributes
-- Artist reputation
-$$\text{Artist reputation index} = \frac{\prod_{i=1}^n(P_{i,y})^\frac{1}{n}/\prod_{i=1}^m(P_{i,0})^\frac{1}{m}}{\exp \left[\sum_{j=1}^z\beta_j(\sum_{i=0}^n \frac{X_{ij,y}}{n}- \sum_{i=1}^m \frac{X_{ij,0}}{m})\right]} $$
 - Size
 - Auction houses
 - Mediums
 - Authenticity dummies
 - Number of works in the lot
 - Date dummies
+- Artist
+$$\text{Artist reputation index} = \frac{\prod_{i=1}^n(P_{i,y})^\frac{1}{n}/\prod_{i=1}^m(P_{i,0})^\frac{1}{m}}{\exp \left[\sum_{j=1}^z\beta_j(\sum_{i=0}^n \frac{X_{ij,y}}{n}- \sum_{i=1}^m \frac{X_{ij,0}}{m})\right]} $$
 
-```{r reputation, eval=FALSE, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
-##------------------------------------------##
-##---ARTIST REPUTATION VARIABLE (Kraussl)---##
-##------------------------------------------##
-modeldata <- subset(artdata, artdata$rank_all<101)
-list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
-                    "nr_works","artist","timedummy")
-expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
-model_100 <- lm(expl_vars, data=modeldata)
 
-#Second step: betaj coefficients are plugged into equation for every artist pair (base & another) 
-rep <- list()
-rep[[1]] <- 1
-for(i in 2:(max(artdata$rank_total))) {
-    list_vars <- c(list_expl_vars,"price")
-    
-    #geometric mean of paintings by artist y
-    y <- subset(artdata[,list_vars], artdata$rank_total==1)
-    y <- y[!rowSums(is.na(y)), ]
-    py <-  exp(mean(log(y$price)))  
-    ym1 <- subset(artdata[,list_vars], artdata$rank_total==i)
-    ym1 <- ym1[!rowSums(is.na(ym1)), ]
-    pym1 <-  exp(mean(log(ym1$price)))
-    sbx <- 0
-    
-    #average of characteristics time implicit attribute price
-    xy <- mean(y$lnarea)
-    xym1 <- mean(ym1$lnarea)   
-    b <- summary(model_100)$coefficients[grepl("lnarea", rownames(summary(model_100)$coefficients)),1]
-    bx <- b*(xym1-xy)   
-    sbx <- sbx + bx
-    
-    xy <- mean(y$lnsculpt_area)
-    xym1 <- mean(ym1$lnsculpt_area)   
-    b <- summary(model_100)$coefficients[grepl("lnsculpt_area", rownames(summary(model_100)$coefficients)),1]
-    bx <- b*(xym1-xy)   
-    sbx <- sbx + bx
-    
-    xy <- mean(y$nr_works)
-    xym1 <- mean(ym1$nr_works)   
-    b <- summary(model_100)$coefficients[grepl("nr_works", rownames(summary(model_100)$coefficients)),1]
-    bx <- b*(xym1-xy)   
-    sbx <- sbx + bx
-    
-    xy <- mean(as.numeric(y$dum_signed)-1)
-    xym1 <- mean(as.numeric(ym1$dum_signed)-1)   
-    b <- summary(model_100)$coefficients[grepl("dum_signed", rownames(summary(model_100)$coefficients)),1]
-    bx <- b*(xym1-xy)   
-    sbx <- sbx + bx
-    
-    xy <- mean(as.numeric(y$dum_dated)-1)
-    xym1 <- mean(as.numeric(ym1$dum_dated)-1)   
-    b <- summary(model_100)$coefficients[grepl("dum_dated", rownames(summary(model_100)$coefficients)),1]
-    bx <- b*(xym1-xy)   
-    sbx <- sbx + bx
-    
-    auc_house <- c("Ashbeys","Bernardi","Bonhams","Russell Kaplan","Stephan Welz","Strauss","Christies")  
-    for(j in auc_house) {
-        xy <- mean(as.numeric(y$ah_code==j))
-        xym1 <- mean(as.numeric(ym1$ah_code==j))  
-        b <- summary(model_100)$coefficients[grepl(j, rownames(summary(model_100)$coefficients)),1]
-        bx <- b*(xym1-xy)   
-        sbx <- sbx + bx
-    }
-    
-    medium <- c("Watercolour","Oil","Acrylic","Print/Woodcut","Mixed Media","Sculpture","Photography","Other")  
-    for(k in medium) {
-        xy <- mean(as.numeric(y$med_code==k))
-        xym1 <- mean(as.numeric(ym1$med_code==k))   
-        b <- summary(model_100)$coefficients[grepl(k, rownames(summary(model_100)$coefficients)),1]
-        bx <- b*(xym1-xy)   
-        sbx <- sbx + bx
-    }
-    rep[i] <- (pym1/py)/exp(sbx)
-}
-
-for(i in 1:(max(artdata$rank_total))) { 
-    artdata$reputation[(artdata$rank_total==i)] <- rep[i]
-}
-
-artdata$reputation <- as.numeric(unlist(artdata$reputation))
-artdata$lnrep <- log(artdata$reputation)
+## Size or surface area by medium
+```{r figure3, echo=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Relationship between prices and artwork sizes, by medium"}
+#Plot surface area and prices by medium
+library(png)
+library(grid)
+grid.raster(readPNG("area2.png"))
 ```
 
+
+## Reputation
+```{r figure4, echo=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Relationship between prices and reputation index"}
+#Plot artist reputation index and prices
+library(png)
+library(grid)
+grid.raster(readPNG("reputation.png"))
+```
+
+## Adjacent Periods
 ```{r hedonicrep, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
-#------------------------------------------------------------------------------------------------------------------------------
-#Load pre-calculated dataset (for speed) from API_3.R
-artdata <- read.csv("artdata_lnrep.csv", header=TRUE)
-
-#The result: index of average price per artist adjusted for quality, relative to the base artist 
-#It can replace the artist dummies as a continuous variable in a second regression of equation 1 
-
 #-------------------
 # FULL SAMPLE MODEL
 #-------------------
 full_model <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
                                                  "nr_works","artist","timedummy")) {
-    if("artist" %in% list_expl_vars) { 
-        modeldata <- subset(artdata, artdata$rank_all<max(artdata$rank_all,na.rm=TRUE))
-    } else modeldata <- artdata
+    modeldata <- artdata
     expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
     model_all <- lm(expl_vars, data=modeldata)
     time_results <- summary(model_all)$coefficients[grepl("time", rownames(summary(model_all)$coefficients)),1]
@@ -361,17 +305,13 @@ overlap1y_model <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_co
     expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
     res_list <- list()
     for(i in 1:16) {
-        if("artist" %in% list_expl_vars) {
-            modeldata <- subset(artdata, artdata[,(44+i)]<max(artdata[,(44+i)],na.rm=TRUE))
-        } else modeldata <- artdata
+        modeldata <- artdata
         modeldata <- subset(modeldata, modeldata$counter>(i*4-5)& modeldata$counter<(i*4+1))
         model <- lm(expl_vars, data=modeldata)  
         res_list[[i]] <- summary(model)$coefficients[grepl("time", rownames(summary(model)$coefficients)),1]
     }
     #Merge all results
-    if("artist" %in% list_expl_vars) {
-        overlap <- time_results
-    } else overlap <- rep_results
+    overlap <- rep_results
     overlap$time_results <- NULL
     overlap <- merge(overlap, res_list[[1]], by="row.names", all=TRUE)
     overlap[,3] <- exp(overlap[,3])*100
@@ -395,13 +335,7 @@ overlap1y_model <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_co
     colnames(overlap) <- c("Date","Index_Full","Index_m1","Index_m2","Index_m3","Index_m4","Index_m5","Index_m6",
                            "Index_m7","Index_m8","Index_m9","Index_m10","Index_m11","Index_m12","Index_m13",
                            "Index_m14","Index_m15","Index_m16","Index_Adjacent1y","teller")
-    overlap$Date <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
-                      "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
-                      "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
-                      "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
-                      "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
-                      "2015Q1","2015Q2","2015Q3","2015Q4")
-    overlap$Date <- factor(overlap$Date)
+    overlap$Date <- factor(levels(artdata$timedummy)[-1])
     return(overlap)
 }
 
@@ -413,17 +347,13 @@ overlap2y_model <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_co
     expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
     res_list <- list()
     for(i in 1:8) {
-        if("artist" %in% list_expl_vars) {
-            modeldata <- subset(artdata, artdata[,(60+i)]<max(artdata[,(60+i)],na.rm=TRUE))
-        } else modeldata <- artdata
+        modeldata <- artdata
         modeldata <- subset(modeldata, modeldata$counter>(i*8-9)& modeldata$counter<(i*8+1))
         model <- lm(expl_vars, data=modeldata)  
         res_list[[i]] <- summary(model)$coefficients[grepl("time", rownames(summary(model)$coefficients)),1]
     }
     #Merge all results
-    if("artist" %in% list_expl_vars) {
-        overlap2 <- time_results
-    } else overlap2 <- rep_results
+    overlap2 <- rep_results
     overlap2$time_results <- NULL
     overlap2 <- merge(overlap2, res_list[[1]], by="row.names", all=TRUE)
     overlap2[,3] <- exp(overlap2[,3])*100
@@ -446,28 +376,19 @@ overlap2y_model <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_co
     }
     colnames(overlap2) <- c("Date","Index_Full","Index_m1","Index_m2","Index_m3","Index_m4","Index_m5",
                             "Index_m6","Index_m7","Index_m8","Index_Adj2y","teller")
-    overlap2$Date <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
-                       "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
-                       "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
-                       "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
-                       "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
-                       "2015Q1","2015Q2","2015Q3","2015Q4")
-    overlap2$Date <- factor(overlap2$Date)
+    overlap2$Date <- factor(levels(artdata$timedummy)[-1])
     return(overlap2)
 }
 
 #----------------------
 #ROLLING 5-YEAR WINDOWS
 #----------------------
-
 rolling_model <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
                                                     "nr_works","artist","timedummy")) {
     expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
     res_list <- list()
     for(i in 1:12) {
-        if("artist" %in% list_expl_vars) {
-            modeldata <- subset(artdata, artdata[,(32+i)]<max(artdata[,(32+i)],na.rm=TRUE))
-        } else modeldata <- artdata
+        modeldata <- artdata
         modeldata <- subset(modeldata, modeldata$counter>(i*4-4)&modeldata$counter<(i*4+17))
         model <- lm(expl_vars, data=modeldata)  
         summary(model)
@@ -475,9 +396,7 @@ rolling_model <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_code
     }
     
     #Merge all results
-    if("artist" %in% list_expl_vars) {
-        rolling <- time_results
-    } else rolling <- rep_results
+    rolling <- rep_results
     rolling$time_results <- NULL
     rolling <- merge(rolling, res_list[[1]], by="row.names", all=TRUE)
     rolling[,3] <- exp(rolling[,3])*100
@@ -498,13 +417,7 @@ rolling_model <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_code
     
     colnames(rolling) <- c("Date","Index_Full","Index_m1","Index_m2","Index_m3","Index_m4","Index_m5","Index_m6",
                            "Index_m7","Index_m8","Index_m9","Index_m10","Index_m11","Index_m12","Index_Rolling","teller")
-    rolling$Date <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
-                      "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
-                      "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
-                      "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
-                      "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
-                      "2015Q1","2015Q2","2015Q3","2015Q4")
-    rolling$Date <- factor(rolling$Date)
+    rolling$Date <- factor(levels(artdata$timedummy)[-1])
     return(rolling)
 }
 
@@ -516,12 +429,20 @@ rep_results <- full_model(artdata,list_expl_vars)
 suppressMessages(rep_overlap1 <- overlap1y_model(artdata,list_expl_vars))
 suppressMessages(rep_overlap2 <- overlap2y_model(artdata,list_expl_vars))
 suppressMessages(rep_rolling <- rolling_model(artdata,list_expl_vars))
+
+hedonic_indices <- rep_overlap1[,c(1,2)]
+colnames(hedonic_indices) <- c("Date","Hedonic_full")
+hedonic_indices <- cbind(hedonic_indices,Adjacent_1y=rep_overlap1[,19])
+hedonic_indices <- cbind(hedonic_indices,Adjacent_2y=rep_overlap2[,11])
+hedonic_indices <- cbind(hedonic_indices,Rolling=rep_rolling[,15])
+hedonic_indices <- cbind(Date=factor(levels(artdata$timedummy)),
+                         rbind(c(seq(100,100, length.out=4)),hedonic_indices[,-1]))
 ```
 
-## Adjacent Periods
 
-```{r figure4, echo=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=6.5, fig.cap="Chain-linked two-year adjacent period art price index"}
+```{r figure6, echo=FALSE, warning=FALSE, cache = TRUE, fig.height=3.5, fig.width=7.5, fig.cap="Chain-linked two-year adjacent period art price index"}
 index_plot <- melt(rep_overlap2[,c(-2,-12)], id="Date")  # convert to long format
+index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 1) 
 g <- g + geom_line()
@@ -529,19 +450,15 @@ g <- g + ylab("Index")
 g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.title=element_blank())
+g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
 g 
 ```
 
-## Hedonic Estimation Results
+## Hedonic Indices
 
-```{r figure5, echo=FALSE, cache = TRUE, fig.height=4, fig.width=6.5, fig.cap="Hedonic South African art price indices (2000Q1=100)"}
-hedonic_indices <- rep_overlap1[,c(1,2)]
-colnames(hedonic_indices) <- c("Date","Hedonic_Full")
-hedonic_indices <- cbind(hedonic_indices,Adjacent_1y=rep_overlap1[,19])
-hedonic_indices <- cbind(hedonic_indices,Adjacent_2y=rep_overlap2[,11])
-hedonic_indices <- cbind(hedonic_indices,Rolling=rep_rolling[,15])
-
+```{r figure7, echo=FALSE, cache = TRUE, fig.height=4, fig.width=7, fig.cap="Hedonic South African art price indices (2000Q1=100)"}
 index_plot <- melt(hedonic_indices, id="Date")  # convert to long format
+index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 1) 
 g <- g + geom_line()
@@ -549,243 +466,55 @@ g <- g + ylab("Index")
 g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.position="bottom") + theme(legend.title=element_blank())
-g 
+g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
+g
 ```
-
 
 ##Repeat Sales Regression Method
 Track repeated sale of a specific asset over time (e.g. Case-Shiller)
 
-Estimate average return on set of assets in each period 
+Aggregate sales pairs and estimate average return in each period
 $$\ln\frac{P_{t+1}}{P_t} =\sum_{i=1}^t\gamma_id_{i}+\epsilon_{i}$$
 
-Controls for all factors contributing to the variation in price growth 
+Controls for all attributes (if they are constant) 
 
-But wasteful of data (resale may only occur infrequently)
+Wasteful of data (single-sale data discarded)
 
-Possible sample selection bias
+- limited number of repeat sales pairs (515) 
+
+Potential sample selection bias
 
 - e.g. low-quality houses often sell more frequently
 
 
-##Hybrid Models: The Pseudo Repeat Sales Method
-Limited number of repeat sales pairs (561) 
-
-- perfect matches (*Wheat Field with Crows*)
-
-Match similar assets over time (*Sunflowers* series)
-
-Address problem of lack of repeat sales
-
-Create (many) pseudo sales pairs:
-
-- Hedonic matching by artist and medium 
-- Set distance metric
-
+## Repeat Sales Index
 ```{r repeatsales, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
 ##=====================##
 ## REPEAT SALES METHOD ##
 ##=====================##
 #check for duplicates (how many)
-sum(duplicated(artdata[,c("artist","title","med_code","area","dum_signed","dum_dated")]))
-
-allDup <- function (value)  { #identify duplicated values
+sum(duplicated(artdata[,c("artist","title","med_code","area","dum_signed","dum_dated","nr_works")]))
+allDup <- function(value) {  #identify duplicated values
     duplicated(value) | duplicated(value, fromLast = TRUE)
 }
-rsartdata <- artdata[allDup(artdata[,c("artist","title","med_code","area","dum_signed","dum_dated")]),]
+rsartdata <- artdata[allDup(artdata[,c("artist","title","med_code","area","dum_signed","dum_dated","nr_works")]),]
 rsartdata <- transform(rsartdata, id = as.numeric(interaction(artist,factor(title),med_code,factor(area),factor(dum_signed),
-                                                              factor(dum_dated), drop=TRUE)))
+                                                              factor(dum_dated), factor(nr_works),drop=TRUE)))
 
-repdata <- repsaledata(rsartdata$lnprice,rsartdata$counter,rsartdata$id)    #transform the data to sales pairs
-repeatsales <- repsale(repdata$price0,repdata$time0,repdata$price1,repdata$time1,mergefirst=2,
-                       graph=FALSE,graph.conf=TRUE,conf=.95)                 #generate the repeat sales index
-repeatsales_index <- exp(as.data.frame(repeatsales$pindex))*100
-repeatsales_index$Date <- c("2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q4",
-"2003Q1","2003Q2","2003Q4","2004Q1","2004Q2","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
-"2006Q1","2006Q2","2006Q3","2006Q4","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
-"2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4","2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4","2015Q1","2015Q2","2015Q3","2015Q4")
+repdata <- repsaledata(rsartdata$lnprice,rsartdata$counter,rsartdata$id)  #transform the data to sales pairs
+repdata <- repdata[complete.cases(repdata),]
+repeatsales <- repsale(repdata$price0,repdata$time0,repdata$price1,repdata$time1,mergefirst=1,
+                       graph=FALSE)   #generate the repeat sales index
+RS_index <- exp(as.data.frame(repeatsales$pindex))*100   
+RS_index$Date <- levels(rsartdata$timedummy)[c(-1:-3,-11,-15,-19,-29)] #missing values
+
+RS_index <- merge(RS_index, naive_indices, by="Date", all=TRUE)[,1:2]
+colnames(RS_index) <- c("Date","Repeat Sales_Index")            
 ```
 
-##Index construction methodology
-Repeat sales regressions on pseudo pairs:
-$$\ln P_{bsj} - \ln P_{arj}=\sum_{k=1}^K\beta_k(X_{bsjk}-X_{arjk})+\sum_{t=0}^\tau\gamma_td_{t}+\epsilon_{srabj}$$
-
-Control for many possible omitted variables by taking first differences
-
-- includes perfect matches
-- interaction and squared terms
-- finer mediums, materials (e.g. linocuts)
-
-```{r psRSsample, echo=FALSE, eval= FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
-##------------------------------------------------------------------
-##--------------- Pseudo Repeat Sales ------------------------------
-##------------------------------------------------------------------
-#The distance metric between any two sales (across the intervening time period) is the 
-#absolute value of the difference between the two predicted hedonic log values. 
-#The threshold for this distance metric can be customised. 
-#At one extreme, one can choose to select only one pair with the smallest value of the distance metric. 
-
-#match per artist by hedonic function
-list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
-                    "nr_works","timedummy")
-expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
-
-ps.RSsample <- function(threshold) {
-    teller <-0
-    repdata <- data.frame()
-    rartdata <- subset(artdata,artdata$rank_all<max(artdata$rank_all,na.rm=TRUE))  #exclude artists with one sale
-    keep <- c("lnprice","artist","title","lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
-              "nr_works","timedummy","counter")
-    rartdata <- rartdata[,names(rartdata) %in% keep]
-    rartdata <- rartdata[complete.cases(rartdata),]  
-    
-    #Rank total again for new sample
-    rankings <- count(rartdata, artist)
-    rankings$rank_total <- row_number(desc(rankings$n))
-    rartdata <- merge(rartdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
-    
-    for(k in 1:max(rartdata$rank_total)) { 
-        modeldata <- subset(rartdata, rartdata$rank_total==k)
-        modeldata$med_code <- factor(modeldata$med_code)
-        modeldata$ah_code <- factor(modeldata$ah_code)
-        modeldata$dum_signed <- factor(modeldata$dum_signed)
-        modeldata$dum_dated <- factor(modeldata$dum_dated)
-        modeldata$timedummy <- factor(modeldata$timedummy)
-        
-        #if there is only one factor level => make it a zero
-        if(length(levels(modeldata$med_code))==1)   { modeldata$med_code <- as.numeric(0) }
-        if(length(levels(modeldata$ah_code))==1)    { modeldata$ah_code <- as.numeric(0) }
-        if(length(levels(modeldata$dum_signed))==1) { modeldata$dum_signed <- as.numeric(0) }
-        if(length(levels(modeldata$dum_dated))==1)  { modeldata$dum_dated <- as.numeric(0)   }
-        
-        if(length(levels(modeldata$timedummy))!=1) {   #if there were sales in more than one period
-            model <- lm(expl_vars, data=modeldata, na.action = na.exclude)
-            newdata <- modeldata
-            newdata$timedummy <- newdata$timedummy[1]  #turn time dummy off by making them all the same
-            modeldata <- cbind(modeldata,fitted=predict.lm(model,newdata=newdata))  #add predicted value
-            
-            for(i in 1:nrow(modeldata)) {  #give items below threshold the same id
-                modeldata$id <- 0
-                teller <- teller + 1
-                modeldata$id[i] <- teller
-                medium <- modeldata$med_code[i]
-                modeldata$distance <- abs(modeldata$fitted[i]-modeldata$fitted)  #distance metric
-                #distances <- cbind(distances,modeldata$distance)
-                if(threshold=="nearest"){  #nearest match if same medium
-                    #modeldata$id[(modeldata$distance==min(modeldata$distance[modeldata[,"id"]==0 & modeldata[,"med_code"]==medium],na.rm=TRUE))] <- teller
-                    modeldata$id[(modeldata$distance==0 & modeldata[,"med_code"]==medium)] <- teller
-                } else {                   #if same medium and distance smaller than threshold
-                    modeldata$id[(modeldata$distance<threshold & modeldata[,"med_code"]==medium)] <- teller
-                } 
-                if(sum(modeldata[,"id"]!=0)>1) {
-                    repdata <- rbind(repdata,modeldata[modeldata[,"id"]!=0, ])
-                }
-            }
-        }
-    }
-    #transform the data to pseudo repeat sales pairs (for all attributes)
-    fullrep <- cbind(repsaledata(repdata$lnprice,repdata$counter,repdata$id),
-                     repsaledata(repdata$artist,repdata$counter,repdata$id)[,4:5],
-                     repsaledata(repdata$title,repdata$counter,repdata$id)[,4:5],
-                     repsaledata(repdata$lnarea,repdata$counter,repdata$id)[,4:5],
-                     repsaledata(repdata$med_code,repdata$counter,repdata$id)[,4:5],
-                     repsaledata(repdata$ah_code,repdata$counter,repdata$id)[,4:5],
-                     repsaledata(repdata$lnsculpt_area,repdata$counter,repdata$id)[,4:5],
-                     repsaledata(repdata$dum_signed,repdata$counter,repdata$id)[,4:5],
-                     repsaledata(repdata$dum_dated,repdata$counter,repdata$id)[,4:5],
-                     repsaledata(repdata$nr_works,repdata$counter,repdata$id)[,4:5])
-    
-    colnames(fullrep) <- c("id","time0","time1","price0","price1","artist0","artist1","title0","title1","area0","area1",
-                           "med_code0","med_code1","ah_code0","ah_code1","sculpt0","sculpt1","sign0","sign1","date0","date1",
-                           "nr0","nr1")
-    return(fullrep)
-}
-
-ps.RSsample_1 <- ps.RSsample(0.01)
-ps.RSsample_2 <- ps.RSsample(0.001)
-ps.RSsample_n <- ps.RSsample("nearest") 
-```
-
-```{r psRS, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
-ps.RSsample_1 <- read.csv("psRSsample_0.01.csv", header=TRUE, sep=",",na.strings = "NA", skipNul = TRUE)
-ps.RSsample_2 <- read.csv("psRSsample_0.001.csv", header=TRUE, sep=",",na.strings = "NA", skipNul = TRUE)
-ps.RSsample_n <- read.csv("psRSsample_n.csv", header=TRUE, sep=",",na.strings = "NA", skipNul = TRUE)
-
-ps.RS <- function(fullrep) {
-    dy <- fullrep$price1 - fullrep$price0
-    timevar <- levels(factor(c(fullrep$time0, fullrep$time1)))
-    nt = length(timevar)
-    n = length(dy)
-    xmat <- array(0, dim = c(n, nt - 1))
-    for (j in seq(1 + 1, nt)) {
-        xmat[, j - 1] <- ifelse(fullrep$time1 == timevar[j], 1, xmat[, j - 1])
-        xmat[, j - 1] <- ifelse(fullrep$time0 == timevar[j],-1, xmat[, j - 1])
-    }
-    colnames(xmat) <- paste("Time", seq(1 + 1, nt))
-    fit <- lm(dy ~ xmat + 0)
-    
-    fullrep$med_code0[is.na(fullrep$med_code0)] <- "Oil"
-    fullrep$med_code1[is.na(fullrep$med_code1)] <- "Oil"
-    fullrep$ah_code0[is.na(fullrep$ah_code0)] <- "Strauss"
-    fullrep$ah_code1[is.na(fullrep$ah_code1)] <- "Strauss"
-    
-    darea <- fullrep$area1 - fullrep$area0
-    
-    med0 <- model.matrix(~fullrep$med_code0)
-    med1 <- model.matrix(~fullrep$med_code1)
-    dmed <- med1 - med0
-    
-    ah0 <- model.matrix(~fullrep$ah_code0)
-    ah1 <- model.matrix(~fullrep$ah_code1)
-    dah <- ah1 - ah0
-    
-    dsculpt <- fullrep$sculpt1 - fullrep$sculpt0
-    dnr <- fullrep$nr1 - fullrep$nr0
-    
-    sign0 <- model.matrix(~fullrep$sign0)
-    sign1 <- model.matrix(~fullrep$sign1)
-    dsign <- sign1 - sign0
-    
-    date0 <- model.matrix(~fullrep$date0)
-    date1 <- model.matrix(~fullrep$date1)
-    ddate <- date1 - date0
-
-    ps.RS <- lm(dy ~ darea + dah + dsculpt + dnr + dsign + ddate + xmat + 0)
-    ps.RS_results <- summary(ps.RS)$coefficients[grepl("Time", rownames(summary(ps.RS)$coefficients)),1]
-    ps.RS_results <- as.data.frame(ps.RS_results)
-    ps.RS_results$index_all <- exp(ps.RS_results$ps.RS_results)*100
-    ps.RS_results$pairs <- nrow(fullrep)
-    
-    return(ps.RS_results)
-}
-
-ps.RS_1 <- ps.RS(ps.RSsample_1)
-ps.RS_2 <- ps.RS(ps.RSsample_2)
-ps.RS_n <- ps.RS(ps.RSsample_n)
-
-Dates <- c("2000Q2","2000Q3","2000Q4","2001Q1","2001Q2","2001Q3","2001Q4","2002Q1","2002Q2","2002Q3","2002Q4",
-           "2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
-           "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
-           "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
-           "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
-           "2015Q1","2015Q2","2015Q3","2015Q4")
-
-ps.RS_1$Date <- Dates
-ps.RS_2$Date <- Dates
-ps.RS_n$Date <- Dates[-2]
-
-rep_indices <- merge(repeatsales_index, ps.RS_1, by="Date", all=TRUE)
-rep_indices <- merge(rep_indices, ps.RS_2, by="Date", all=TRUE)
-rep_indices <- merge(rep_indices, ps.RS_n, by="Date", all=TRUE)
-rep_indices <- rep_indices[,c(1,2,4,7,10)]
-colnames(rep_indices) <- c("Date","Repeat Sales","ps.RS(1%)","ps.RS(0.1%)","ps.RS(nearest)")       
-```
-
-
-##Pseudo Repeat Sales Results
-
-```{r figure6, echo=FALSE, cache=TRUE, warning=FALSE, fig.height=4, fig.width=6.5, fig.cap="Pseudo repeat sales South African art price indices (2000Q1=100)"}
-index_plot <- melt(rep_indices[,-2], id="Date")  # convert to long format
+```{r figure8, echo=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=7, fig.cap="Repeat sales index of South African art prices (2000Q4=100)"}
+index_plot <- melt(RS_index, id="Date")  # convert to long format
+index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 1) 
 g <- g + geom_line()
@@ -793,23 +522,136 @@ g <- g + ylab("Index")
 g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
-g 
+g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
+g
 ```
 
+##Hybrid Models: The Pseudo Repeat Sales Method
+Limited repeat sales or perfect matches (*Wheat Field with Crows*)
+
+Match similar assets over time (*Sunflowers*)
+
+Address scarcity of repeat sales by creating pseudo pairs
+
+Can be derived from the first differenced hedonic model:
+$$\ln P_{it} - \ln P_{hs} = \sum_{j=1}^J \beta_j (X_{itj} - X_{hsj}) + \sum_{t=0}^T \delta_t G_{it} + \epsilon_{iths}$$
+
+Control for possible omitted variables by taking first differences
+
+- interaction and squared terms
+- finer mediums & materials (e.g. linocuts and canvas)
+
+1) Match by all attributes, except title (6,642 sales pairs)
+2) All attributes, except title & authenticity dummies (7,965)
+
+```{r psRSsample, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
+##------------------------------------------------------------------
+##--------------- Pseudo Repeat Sales ------------------------------
+##------------------------------------------------------------------
+#do the same but expand it to not match by title - i.e. all other attributes are the same
+#check for duplicates (how many)
+sum(duplicated(artdata[,c("artist","med_code","area","dum_signed","dum_dated","nr_works")]))
+rsartdata1 <- artdata[allDup(artdata[,c("artist","med_code","area","dum_signed","dum_dated","nr_works")]),]
+rsartdata1 <- transform(rsartdata1, id = as.numeric(interaction(artist,med_code,factor(area),factor(dum_signed),
+                                                                factor(dum_dated),factor(nr_works), drop=TRUE)))
+
+repdata1 <- cbind(repsaledata(rsartdata1$lnprice,rsartdata1$counter,rsartdata1$id),
+                  repsaledata(rsartdata1$ah_code,rsartdata1$counter,rsartdata1$id)[,4:5]) #transform the data to sales pairs
+repdata1 <- repdata1[complete.cases(repdata1),]
+colnames(repdata1) <- c("id","time0","time1","price0","price1","ah_code0","ah_code1")
+
+dy <- repdata1$price1 - repdata1$price0
+ah0 <- model.matrix(~repdata1$ah_code0)
+ah1 <- model.matrix(~repdata1$ah_code1)
+dah <- ah1 - ah0
+
+timevar <- levels(factor(c(repdata1$time0, repdata1$time1)))
+nt = length(timevar)
+n = length(dy)
+xmat <- array(0, dim = c(n, nt - 1))
+for (j in seq(1 + 1, nt)) {
+    xmat[,j-1] <- ifelse(repdata1$time1 == timevar[j], 1, xmat[,j-1])
+    xmat[,j-1] <- ifelse(repdata1$time0 == timevar[j],-1, xmat[,j-1])
+}
+colnames(xmat) <- paste("Time", seq(1 + 1, nt))
+
+ps.RS <- lm(dy ~ dah + xmat + 0)
+RS_index1 <- summary(ps.RS)$coefficients[grepl("Time", rownames(summary(ps.RS)$coefficients)),1]
+RS_index1 <- as.data.frame(RS_index1)
+RS_index1$index <- exp(RS_index1$RS_index1)*100
+RS_index1$Date <- levels(rsartdata1$timedummy)[-1]
+RS_index1 <- RS_index1[,c(2,3)]
+
+##=====================##
+#do the same but expand it to not match by title or authenticity dummies
+#check for duplicates (how many)
+sum(duplicated(artdata[,c("artist","med_code","area","nr_works")]))
+rsartdata2 <- artdata[allDup(artdata[,c("artist","med_code","area","nr_works")]),]
+rsartdata2 <- transform(rsartdata2, id = as.numeric(interaction(artist,med_code,factor(area),factor(nr_works), drop=TRUE)))
+
+repdata2 <- cbind(repsaledata(rsartdata2$lnprice,rsartdata2$counter,rsartdata2$id),
+                  repsaledata(rsartdata2$ah_code,rsartdata2$counter,rsartdata2$id)[,4:5],
+                  repsaledata(rsartdata2$dum_signed,rsartdata2$counter,rsartdata2$id)[,4:5],
+                  repsaledata(rsartdata2$dum_dated,rsartdata2$counter,rsartdata2$id)[,4:5])
+repdata2 <- repdata2[complete.cases(repdata2),]
+colnames(repdata2) <- c("id","time0","time1","price0","price1","ah_code0","ah_code1","sign0","sign1","date0","date1")
+
+dy <- repdata2$price1 - repdata2$price0
+dsign <- repdata2$sign1 - repdata2$sign0
+ddate <- repdata2$date1 - repdata2$date0
+ah0 <- model.matrix(~repdata2$ah_code0)
+ah1 <- model.matrix(~repdata2$ah_code1)
+dah <- ah1 - ah0
+
+timevar <- levels(factor(c(repdata2$time0, repdata2$time1)))
+nt = length(timevar)
+n = length(dy)
+xmat <- array(0, dim = c(n, nt - 1))
+for (j in seq(1 + 1, nt)) {
+    xmat[,j-1] <- ifelse(repdata2$time1 == timevar[j], 1, xmat[,j-1])
+    xmat[,j-1] <- ifelse(repdata2$time0 == timevar[j],-1, xmat[,j-1])
+}
+colnames(xmat) <- paste("Time", seq(1 + 1, nt))
+
+ps.RS <- lm(dy ~ dah + dsign + ddate + xmat + 0)
+RS_index2 <- summary(ps.RS)$coefficients[grepl("Time", rownames(summary(ps.RS)$coefficients)),1]
+RS_index2 <- as.data.frame(RS_index2)
+RS_index2$index <- exp(RS_index2$RS_index2)*100
+RS_index2$Date <- levels(rsartdata2$timedummy)[-1]
+RS_index2 <- RS_index2[,c(2,3)]
+
+#------------------------------------------------------------------------
+RS_indices <- merge(RS_index, RS_index1, by="Date", all=TRUE)
+RS_indices <- merge(RS_indices, RS_index2, by="Date", all=TRUE)
+RS_indices[1,2:4] <- 100
+colnames(RS_indices) <- c("Date","Repeat Sales","pseudo-RS1","pseudo-RS2")          
+```
+
+##Pseudo Repeat Sales Indices
+
+```{r figure9, echo=FALSE, cache=TRUE, warning=FALSE, fig.height=4, fig.width=7.5, fig.cap="Pseudo repeat sales South African art price indices (2000Q1=100)"}
+index_plot <- melt(RS_indices[,-2], id="Date")  # convert to long format
+index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 1) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
+g
+```
 
 #Comparison and Evaluation
 
 ##Comparison of the indices
 
-```{r figure7, echo=FALSE, cache = TRUE, warning=FALSE, fig.height=4, fig.width=6.5, fig.cap="Comparing South African art price indices (2000Q1=100)"}
-all_indices <- cbind(hedonic_indices[-1],rep_indices[,c(-1,-2)])
-all_indices <- rbind(c(seq(100,100, length.out = ncol(rep_indices))),all_indices)
-all_indices[3,7] <- 100
-all_indices <- cbind(all_indices,Median=naive_index$Index_Naive)
-all_indices <- cbind(Date=naive_index$Date, all_indices)
-
-
-index_plot <- melt(all_indices[,c(1,2,6,9)], id="Date")  # convert to long format
+```{r figure10, echo=FALSE, cache = TRUE, warning=FALSE, fig.height=4, fig.width=7.5, fig.cap="Comparing South African art price indices (2000Q1=100)"}
+all_indices <- cbind(naive_indices,hedonic_indices[-1],RS_indices[-1])
+all_indices[is.na(all_indices)]<- 100
+index_plot <- melt(all_indices[,c(1,2,6,10)], id="Date")  # convert to long format
+index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 1) 
 g <- g + geom_line()
@@ -817,63 +659,97 @@ g <- g + ylab("Index")
 g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
 g
 ```
 
-##Correlations
-
-```{r table5, echo=FALSE, results='asis', warning=FALSE, message=FALSE, cache = TRUE}
-temp_indices <- all_indices
-colnames(temp_indices) <- c("Date","Hedonic","Adj1y","Adj2y","Roll","ps.RS(1%)","ps.RS(0.1%)","ps.RS(0)","Median")
-# Check correlations (in levels and growth rates)
-source("corstarsl.R")
-for(i in 2:ncol(temp_indices)) {temp_indices[,i] <- as.numeric(temp_indices[,i]) }
-ts.all_indices <- as.ts(temp_indices[,-1],start =c(2000,1),end=c(2015,4),frequency=4)
-dl.indices <- as.data.frame(diff(log(ts.all_indices)))
-xt <- xtable(corstarsl(dl.indices), caption="Correlations in DLogs")
-print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"), scalebox = 0.7)
-```
 
 ##Evaluating index smoothness
 
-```{r table6, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+```{r table3, echo=FALSE, results='asis', warning=FALSE, message=FALSE, cache = TRUE}
 ##Comparing index smoothness
 # Check std dev or volatility en AC(1)
-ac.1 <-numeric()
+ac.1 <- numeric()
 eval <- data.frame()
-returns <- all_indices
-for(i in 2:ncol(all_indices)) {
-    for(j in 2:nrow(all_indices)) {
-        returns[j,i] <- all_indices[j,i]/all_indices[j-1,i] - 1
-    }
-}
-returns <- returns[-1,-1]
+HPdev <- numeric()
+smoothness <- numeric()
 
 vol <- apply(returns,MARGIN=2, FUN=sd, na.rm=TRUE)
 for(i in 1:ncol(returns)) {
     ac.1[i] <- acf(returns,na.action = na.pass, plot = FALSE, lag.max = 1)$acf[,,i][2,i]
 }
-eval <- cbind(vol=vol,ac.1=ac.1[1:8])
-xt <- xtable(eval, caption="Smoothness Indicators")
-print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
+
+hp <- temp_indices
+for(i in 2:10) {
+    hp[,i] <- hpfilter(temp_indices[,i],freq = 1600)[2]
+}
+ts.hp <- as.ts(hp[,-1],start =c(2000,1),end=c(2015,4),frequency=4)
+hpreturns <- as.data.frame(diff(log(ts.hp)))
+for(i in 1:ncol(returns)) {
+    HPdev[i] <- sum((hpreturns[,i] - returns[,i])^2)
+}
+
+#spectral density
+smooth <- function (datavec,k,l) {     # calculates smoothness coefficient for 'datavec' with 
+    # 'k' specifies the width of the Daniell window which smooths the raw periodogram 
+    ## Step 1: Calculate and record power spectral density using 'speccalcs'
+    speccalcs <- spec.pgram(datavec,spans=c(k,l),demean=TRUE,plot=FALSE)
+    spectra <- speccalcs$spec
+    
+    ## Step 2 Take natural logs of power spectral frequencies
+    logspec <- log(spectra)
+    n <- length(logspec)
+    m <- n/2
+    
+    p1 <- mean(logspec[1:m])
+    p2 <- mean(logspec[(m+1):n])
+    smcoef <- p1-p2
+    smcoefvar <- (pi^2)/6*((1/m)+(1/(n-m)))
+    smcoefse <- sqrt(smcoefvar)
+    #list(smcoef,smcoefse)
+    return(smcoef)
+}
+for(i in 1:10) { smoothness[i] <- smooth(all_indices[,i],3,3) }
+
+eval <- cbind(Vol=vol,AC.1=ac.1[1:9],HPDeviation=HPdev,Smoothness=smoothness[-1])
+xt <- xtable(eval, caption="Smoothness Indicators", digits=c(0,3,3,2,2))
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"), scalebox = 0.9) 
 ```
 
 ##Compared to international art price indices
 
-```{r figure8, echo=FALSE, cache = TRUE, warning=FALSE, fig.height=4, fig.width=6.5, fig.cap="Comparing art price indices (2000Q1=100)"}
-#Compared to other art markets
+```{r figure11, echo=FALSE, cache = TRUE, warning=FALSE, fig.height=4, fig.width=7.5, fig.cap="Comparing art price indices (2000Q1=100)"}
+##Compared to other art markets
 assets <- read.csv("Assets.csv", header=TRUE, na.strings = "", skipNul = TRUE)
-index_plot <- cbind(all_indices[,c(1,2,6)],assets[,c(7,8,9)])
+index_plot <- cbind(all_indices[,c(1,6,10)],assets[,c(6,7,8)])
 index_plot <- melt(index_plot, id="Date")  # convert to long format
+index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_line()
 g <- g + ylab("Index")
 g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
 g
 ```
 
+##Compared to other local assets
+
+```{r figure12, echo=FALSE, cache = TRUE, warning=FALSE, fig.height=4, fig.width=7.5, fig.cap="Comparing South African asset price indices (2000Q1=100)"}
+##Compared to other assets
+index_plot <- cbind(all_indices[,c(1,6,10)],assets[,c(2,3,4)])
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
+g 
+```
 
 # Bubbles
 
@@ -881,24 +757,17 @@ g
 
 Rational bubbles: willing to pay more than fundamental value 
 
-- expect asset price will  exceed its fundamental value in future
+- expect asset price will exceed its fundamental value in future
 
-Gap between market fundamental and the actual price
+Gap between fundamental price and market price
 
-Present value of asset:
-$$P_t = F_t + B_t$$
-$$F_t = E_t[\Sigma_{i=1}^n \frac{1}{1+r_f} (\gamma_{t+n})]$$ 
-$$B_t = \frac{1}{1+r_f}E_t(B_{t+n})$$ 
+- difficult to determine fundamental value of art
 
-Properties of $P_t$ are determined by those of $F_t$ and $B_t$
-
-If bubble is present, $B_t \neq 0$, prices exhibit explosive behaviour
+If bubble is present - prices exhibit explosive behaviour
 
 So look for mildly explosive behaviour in price series
 
 ## Methodology: Explosive Behaviour
-Method proposed by Phillips et al (2011)
-
 Recursive autoregressive models (log real indices):
 $$\Delta y_t = \alpha_w + (\rho_w-1)y_{t-1}+\sum_{i=1}^k\phi_w^i \Delta y_{t-i} + \epsilon_t $$
 
@@ -930,11 +799,8 @@ for(i in 1:ncol(y_indices)) {
     bubble2 <- numeric()
     for(j in 12:64) {
         y <- y_indices[1:j,i]
-        #toets1 <- adf.test(y, alternative = "explosive", k=4)
-        #bubble1 <- rbind(bubble1,toets1$statistic)
         toets1 <- ur.df(y, type= "none", lags = 4, selectlags = c("AIC"))
         toets2 <- ur.df(y, type= "drift", lags = 4, selectlags = c("AIC"))
-        #toets <- ur.df(y, type= "trend", lags = 4, selectlags = c("AIC"))
         bubble1 <- rbind(bubble1,toets1@teststat)
         bubble2 <- rbind(bubble2,toets2@teststat)
     }
@@ -970,26 +836,21 @@ for(j in 12:64) {
         dy1 <- DY1[(burn+1):(obs+burn)]             
         ly1 <- Y1[burn:(obs+burn-1)] 
         trend <- 1:obs
-
+        
         EQ1 <- lm(dy1 ~ 0 + ly1)       
         tstat.nc <- rbind(tstat.nc,summary(EQ1)$coefficients[1,3]) 
         EQ2 <- lm(dy1 ~ ly1)            
         tstat.c <- rbind(tstat.c,summary(EQ2)$coefficients[2,3])  
-        EQ3 <- lm(dy1 ~ lag(y1) + trend)    
-        tstat.ct <- rbind(tstat.ct,summary(EQ3)$coefficients[2,3]) 
     }                                       
     #hist(tstat.nc)
     K1 <- rbind(K1,quantile(tstat.nc, probs=c(0.9,0.95,0.99)))
     K2 <- rbind(K2,quantile(tstat.c, probs=c(0.9,0.95,0.99)))
-    K3 <- rbind(K3,quantile(tstat.ct, probs= c(0.9,0.95,0.99)))
 }   #Provides a vector of critical values
 
-##---------------------------------------------------------------------------
-#plot die test stats en critical values 
 bubble.test1 <- numeric()
 bubble.test2 <- numeric()
 
-for(k in 1:8) { 
+for(k in 1:9) { 
     bubble.test1 <- cbind(bubble.test1,bubble.nc[[k]])
     bubble.test2 <- cbind(bubble.test2,bubble.c[[k]][1:53])
 }
@@ -998,57 +859,62 @@ bubble.test2 <- as.data.frame(bubble.test2)
 bubble.test1 <- cbind(bubble.test1,K1)
 bubble.test2 <- cbind(bubble.test2,K2)
 
-Dates <- c("2002Q4","2003Q1","2003Q2","2003Q3","2003Q4","2004Q1","2004Q2","2004Q3","2004Q4","2005Q1","2005Q2","2005Q3","2005Q4",
-           "2006Q1","2006Q2","2006Q3","2006Q4","2007Q1","2007Q2","2007Q3","2007Q4","2008Q1","2008Q2","2008Q3","2008Q4",
-           "2009Q1","2009Q2","2009Q3","2009Q4","2010Q1","2010Q2","2010Q3","2010Q4","2011Q1","2011Q2","2011Q3","2011Q4",
-           "2012Q1","2012Q2","2012Q3","2012Q4","2013Q1","2013Q2","2013Q3","2013Q4","2014Q1","2014Q2","2014Q3","2014Q4",
-           "2015Q1","2015Q2","2015Q3","2015Q4")
+Dates <- levels(artdata$timedummy)[-1:-11]
 bubble.test1$Date <- Dates
 bubble.test2$Date <- Dates
 
-colnames(bubble.test1)[1:8] <- c("Hedonic_Full","Adjacent_1y","Adjacent_2y","Rolling","ps.RS(1%)","ps.RS(0.1%)","ps.RS(nearest)","Median")
-colnames(bubble.test2)[1:8] <- c("Hedonic_Full","Adjacent_1y","Adjacent_2y","Rolling","ps.RS(1%)","ps.RS(0.1%)","ps.RS(nearest)","Median")
+colnames(bubble.test1)[1:9] <- colnames(all_indices[-1])
+colnames(bubble.test2)[1:9] <- colnames(all_indices[-1])
 ```
 
 ## Results: No Drift or Trend
 
-```{r figure10, echo=FALSE, message=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=6.5, fig.cap="Full hedonic model: Test stat and critical values"}
-index_plot <- bubble.test1[,c(1,5,8,10,11,12)]
+```{r figure13, echo=FALSE, message=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Test statistics and critical values for models without drift"}
+index_plot <- bubble.test1[,c(1,4,9,11,12,13)]
 index_plot <- melt(index_plot, id="Date")  # convert to long format
+index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 1) 
-g <- g + geom_line()
+g <- g + geom_line(aes(linetype=variable))
+g <- g + scale_linetype_manual(values = c(1,1,1,4,4))
 g <- g + ylab("Index")
 g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
 g
 ```
 
 
 ## Results: Drift
 
-```{r figure11, echo=FALSE, message=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=6.5, fig.cap="ps-RS model(0.1%): Test stat and critical values"}
-index_plot <- bubble.test2[,c(1,5,8,10,11,12)]
+```{r figure14, echo=FALSE, message=FALSE, warning=FALSE, cache = TRUE, fig.height=4, fig.width=7.5, fig.cap="Test statistics and critical values for models with drift"}
+index_plot <- bubble.test2[,c(1,4,9,11,12,13)]
 index_plot <- melt(index_plot, id="Date")  # convert to long format
+index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 1) 
-g <- g + geom_line()
+g <- g + geom_line(aes(linetype=variable))
+g <- g + scale_linetype_manual(values = c(1,1,1,4,4))
 g <- g + ylab("Index")
 g <- g + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
 g
 ```
 
 ## Bubble Dates
 
 ```{r dates, echo=FALSE, results='hide', message=FALSE, warning=FALSE, cache = TRUE}
-#report bubble period dates
+#report  bubble period dates
 datum1 <- data.frame()
 datum2 <- data.frame()
 datums1 <- data.frame()
 datums2 <- data.frame()
+
+bubble.test1 <- bubble.test1[,c(-1,-7)]
+bubble.test2 <- bubble.test2[,c(-1,-7)]
 
 for(i in 1:7) {
     for(l in 1:53) {
@@ -1063,7 +929,7 @@ for(i in 1:7) {
     firstNonNA <- min(NonNAindex)
     datums1[1,i] <- datum1[firstNonNA,i]
     if (NonNAindex[NROW(NonNAindex)-1]==(max(NonNAindex)-1)) { 
-         lastNonNA <- max(NonNAindex)
+        lastNonNA <- max(NonNAindex)
     } else lastNonNA <- NonNAindex[NROW(NonNAindex)-1]
     datums1[2,i] <- datum1[lastNonNA,i]
     
@@ -1073,14 +939,14 @@ for(i in 1:7) {
     lastNonNA <- max(NonNAindex)
     datums2[2,i] <- datum2[lastNonNA,i]
 }    
-    
+
 datums <- rbind(datums1,datums2)
 colnames(datums) <- colnames(bubble.test1)[1:7]
 rownames(datums) <- c("None-Start","None-End","Drift-Start","Drift-End")
 datums <- t(datums)
 ```
 
-```{r table7, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
+```{r table5, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
 xt <- xtable(datums, caption="Dates of explosive behaviour")
 print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
 ```
@@ -1088,10 +954,28 @@ print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.p
 # Conclusion
 
 ## Conclusion
-Sukkel sukkel...
+
+Regression-based indices:
+
+- Differ from  central tendency measures (better i.t.o. smoothness)
+- Relatively similar and consistent general cyclical trends
+
+Potential bubble in run-up to financial crisis (2006-2008):
+
+- High transaction costs and no short selling
+- Self-fulfilling prophecy and exogenous shock
+- Spillovers from other markets through wealth effect
+
+Potential further research: 
+
+- Risk-return profile and optimal asset allocation
+- Masterpiece effect
+- Potential drivers of art prices 
+
+Suggestions and Advice?
 
 ------------------------------------------------
-![alt text](Mealies.png)
+![alt text](Women.jpg)
 
 
 

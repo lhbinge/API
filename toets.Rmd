@@ -1,63 +1,40 @@
 ---
-title: "Untitled"
-author: "Bing"
-date: "02 December 2015"
-output: html_document
+output: 
+    pdf_document:
+        fig_caption: yes
+
 ---
 
-#Introduction
-Contemporary African art, long seen as a niche market, has experienced a surge in popularity over the last few decades. The South African art market in particular has received a lot of attention and has grown markedly over the last two decades, both in terms of the number of transactions and total turnover [@Fedderke2014]. Artworks by South African artists have reached record prices at international and local auctions, both for the country's "masters" - including Irma Stern, Walter Battiss, and JH Pierneef - and contemporary artists like William Kentridge [@Naidoo2013]. For example, in 2011 Irma Stern's *"Arab Priest"* set a world record hammer price of £2.7 million at auction (Bonhams), while *"Two Arabs"* sold for R19 million, a record for a South African auction house (Strauss & Co). 
-The increase in interest in South African art, both locally and abroad, has sparked a vibrant market for investors [@Naidoo2013]. This increase in the popularity of art, partly as an investment vehicle, is commensurate with international trends, where fine art has become an important asset class in its own right. In 2010 the Wall Street Journal reported that around 6% of total wealth was held in so-called passion investments, which include art, wine, antiques and jewellery. Of all these luxury goods, art is the most likely to be acquired for its potential appreciation in value [@Capgemini2010]. Passion investments, and art in particular, are interesting examples of alternative assets, as they are durable goods with investment as well as consumption characteristics [@Renneboog2014].
-In times of economic uncertainty there is often an increase in demand for physical assets: as these have limited supply they are often considered relatively safe in times of financial turmoil [@Warwick-Ching2013]. In addition, the demand for alternative assets is supported by their imperfect correlation with the stock market, which is thought to aid portfolio diversification. Alternative assets are also used as collateral for loans, or to take advantage of slacker regulatory and tax provisions. 
 
-An improvement can be made by stratification of the data. Stratified measures control for variations in prices across different types of assets by separating the sample into subgroups according to individual characteristics such as artist and medium.[^1] Stratified measures are currently used by ABSA, FNB and Standard Bank, for instance, to construct property price indices for South Africa. However, scholarly work rarely employs central tendency indices. The repeat sales and the hedonic regression methods have dominated in the international literature. 
-[^1]: Ek het weergawes van hierdie indekse bereken, so ons kan hulle insluit as dit nodig is. The Fisher ideal index is often the recommended index formula, as it can be justified from several different perspectives (Eurostat, 2013). It is the geometric mean of the Laspeyres and Paasche indices. The Laspeyres index holds the quantity weights fixed in the base period, while the Paasche index holds the quantity weights fixed at the comparison period.
-
-##Hedonic
-
-$$\ln P_{it} =\alpha+\sum_{j=1}^z\beta_jX_{ij}+\sum_{t=0}^\tau\gamma_tD_{it}+\epsilon_{it}$$
-
-###Reputaion variable
-
-$$Index = \frac{\prod_{i=1}^n(P_{i,t+1})^\frac{1}{n}}{\prod_{i=1}^m(P_{i,t})^\frac{1}{m}}/\text{hedonic adjustment} $$
-
-$$\text{hedonic adjustment} = \exp \left[\sum_{j=1}^z\beta_j(\sum_{i=0}^n \frac{X_{ij,t+1}}{n}- \sum_{i=1}^m \frac{X_{ij,t}}{m})\right]$$
-
-
-$$\text{Artist reputation index} = \frac{\prod_{i=1}^n(P_{i,y})^\frac{1}{n}/\prod_{i=1}^m(P_{i,0})^\frac{1}{m}}{\exp \left[\sum_{j=1}^z\beta_j(\sum_{i=0}^n \frac{X_{ij,y}}{n}- \sum_{i=1}^m \frac{X_{ij,0}}{m})\right]} $$
-
-$$Index = \frac{\frac{\prod_{i=1}^n(P_{i,y})^\frac{1}{n}}{\prod_{i=1}^m(P_{i,0})^\frac{1}{m}}}{\exp \left[\sum_{j=1}^z\beta_j(\sum_{i=0}^n \frac{X_{ij,y}}{n}- \sum_{i=1}^m \frac{X_{ij,0}}{m})\right]} $$
-
-##Repeat Sales
-
-$$\ln\frac{P_{t+1}}{P_t} =\sum_{i=1}^t\gamma_id_{i}+\epsilon_{i}$$
-
-
-##Hybrid
-
-$$\ln P_{bsj} - \ln P_{arj}=\sum_{k=1}^K\beta_k(X_{bsjk}-X_{arjk})+\sum_{t=0}^\tau\gamma_td_{t}+\epsilon_{srabj}$$
-
-
-
-##Evaluation
-
-$M_t=M_{t-1}+r_t$ and $I_t=M_t+\epsilon_t=\sum_{i=1}^tr_i+\epsilon_t$
-
-$r_t^*=I_t-I_{t-1}=r_t+(\epsilon_t-\epsilon_{t-1})= r_t+\eta_t$
-
-$Vol=\sigma_{r_t^*}=\sqrt{\sigma_r^2+\sigma_\eta^2}$ and $AC(1)=\rho_{r^*}=(\rho_r\sigma_r^2-\sigma_\eta^2/2)/(\sigma_r^2+\sigma_\eta^2)$ 
-
-
-
-#Bubble Detection
-
-$$\Delta y_t = \alpha_w + (\rho_w-1)y_{t-1}+\sum_{i=1}^k\phi_w^i \Delta y_{t-i} + \epsilon_t $$
-
-$$P_t = \frac{1}{1+R_f}E_t(P_{t+1} + \gamma_{t+1})$$
-
-When $t+n$ is far into the future, $\frac{1}{1+R_f}E_t(P_{t+n})$ does not affect $P_t$ as it tends to zero as n becomes infinitely large.
-
-The present value of an asset could be written as: The asset price can be written as: 
-$P_t = F_t + B_t$, where $F_t$, called the fundamental component is: $$F_t = E_t[\Sigma_{i=1}^n \frac{1}{1+R_f} (\gamma_{t+n})]$$
-
-
+\begin{table}[ht]
+\centering
+\caption{Correlations in Levels} 
+\scalebox{0.7}{
+\begin{tabular}{rllllllll}
+  \hline
+ & Cape Town & Port Elizabeth & East London & Kimberley & Cape Town & Port Elizabeth & East London & Kimberley \\ 
+  \hline
+Cape Town &  &  &  &  &  &  &  &  \\ 
+  Port Elizabeth & $\backslash$colorbox\{gray\}\{ 0.35***\} &  &  &  & $\backslash$colorbox\{gray\}\{ 0.34***\} &  &  &  \\ 
+  East London & $\backslash$colorbox\{gray\}\{ 0.27***\} & -0.30*** &  &  & $\backslash$colorbox\{gray\}\{ 0.79***\} & $\backslash$colorbox\{gray\}\{ 0.32***\} &  &  \\ 
+  Kimberley & $\backslash$colorbox\{gray\}\{ 0.77***\} & $\backslash$colorbox\{gray\}\{ 0.38***\} &  0.02  &  & $\backslash$colorbox\{gray\}\{ 0.72***\} &  0.16*  & $\backslash$colorbox\{gray\}\{ 0.52***\} &  \\ 
+  Worcester &  0.16**  & $\backslash$colorbox\{gray\}\{ 0.38***\} & -0.39*** & $\backslash$colorbox\{gray\}\{ 0.38***\} & $\backslash$colorbox\{gray\}\{ 0.96***\} & $\backslash$colorbox\{gray\}\{ 0.31***\} & $\backslash$colorbox\{gray\}\{ 0.80***\} & $\backslash$colorbox\{gray\}\{ 0.73***\} \\ 
+  Malmesbury & $\backslash$colorbox\{gray\}\{ 0.57***\} & $\backslash$colorbox\{gray\}\{ 0.51***\} &  0.21**  & $\backslash$colorbox\{gray\}\{ 0.68***\} & $\backslash$colorbox\{gray\}\{ 0.92***\} & $\backslash$colorbox\{gray\}\{ 0.33***\} & $\backslash$colorbox\{gray\}\{ 0.71***\} & $\backslash$colorbox\{gray\}\{ 0.66***\} \\ 
+  Beaufort West &  0.21**  & $\backslash$colorbox\{gray\}\{ 0.66***\} & -0.20**  & $\backslash$colorbox\{gray\}\{ 0.32***\} & $\backslash$colorbox\{gray\}\{ 0.92***\} & $\backslash$colorbox\{gray\}\{ 0.43***\} & $\backslash$colorbox\{gray\}\{ 0.77***\} & $\backslash$colorbox\{gray\}\{ 0.64***\} \\ 
+  Mossel Bay & $\backslash$colorbox\{gray\}\{ 0.34***\} & $\backslash$colorbox\{gray\}\{ 0.47***\} & -0.33*** & $\backslash$colorbox\{gray\}\{ 0.41***\} & $\backslash$colorbox\{gray\}\{ 0.81***\} &  0.23**  & $\backslash$colorbox\{gray\}\{ 0.83***\} & $\backslash$colorbox\{gray\}\{ 0.74***\} \\ 
+  Clanwilliam & -0.24**  & -0.51*** & $\backslash$colorbox\{gray\}\{ 0.49***\} & -0.13  & $\backslash$colorbox\{gray\}\{ 0.89***\} & $\backslash$colorbox\{gray\}\{ 0.37***\} & $\backslash$colorbox\{gray\}\{ 0.62***\} & $\backslash$colorbox\{gray\}\{ 0.50***\} \\ 
+  Graham's Town & $\backslash$colorbox\{gray\}\{ 0.54***\} & $\backslash$colorbox\{gray\}\{ 0.37***\} &  0.20**  & $\backslash$colorbox\{gray\}\{ 0.65***\} & $\backslash$colorbox\{gray\}\{ 0.64***\} & $\backslash$colorbox\{gray\}\{ 0.73***\} & $\backslash$colorbox\{gray\}\{ 0.66***\} & $\backslash$colorbox\{gray\}\{ 0.36***\} \\ 
+  Port Alfred &  0.13  & $\backslash$colorbox\{gray\}\{ 0.41***\} & -0.08  & $\backslash$colorbox\{gray\}\{ 0.39***\} &  0.23**  &  0.22**  & $\backslash$colorbox\{gray\}\{ 0.47***\} &  0.13  \\ 
+  Graaff-Reinet & $\backslash$colorbox\{gray\}\{ 0.68***\} & $\backslash$colorbox\{gray\}\{ 0.39***\} & -0.06  & $\backslash$colorbox\{gray\}\{ 0.59***\} & $\backslash$colorbox\{gray\}\{ 0.74***\} & $\backslash$colorbox\{gray\}\{ 0.27***\} & $\backslash$colorbox\{gray\}\{ 0.73***\} & $\backslash$colorbox\{gray\}\{ 0.76***\} \\ 
+  Cradock &  0.24**  & $\backslash$colorbox\{gray\}\{ 0.36***\} &  0.05  & $\backslash$colorbox\{gray\}\{ 0.51***\} & $\backslash$colorbox\{gray\}\{ 0.89***\} & $\backslash$colorbox\{gray\}\{ 0.42***\} & $\backslash$colorbox\{gray\}\{ 0.79***\} & $\backslash$colorbox\{gray\}\{ 0.52***\} \\ 
+  Colesberg & $\backslash$colorbox\{gray\}\{ 0.40***\} & $\backslash$colorbox\{gray\}\{ 0.39***\} &  0.10  & $\backslash$colorbox\{gray\}\{ 0.59***\} & $\backslash$colorbox\{gray\}\{ 0.79***\} &  0.24**  & $\backslash$colorbox\{gray\}\{ 0.81***\} & $\backslash$colorbox\{gray\}\{ 0.58***\} \\ 
+  King William's Town & $\backslash$colorbox\{gray\}\{ 0.61***\} & $\backslash$colorbox\{gray\}\{ 0.52***\} &  0.05  & $\backslash$colorbox\{gray\}\{ 0.66***\} & $\backslash$colorbox\{gray\}\{ 0.79***\} & $\backslash$colorbox\{gray\}\{ 0.65***\} & $\backslash$colorbox\{gray\}\{ 0.67***\} & $\backslash$colorbox\{gray\}\{ 0.50***\} \\ 
+  Queen's Town & $\backslash$colorbox\{gray\}\{ 0.66***\} & $\backslash$colorbox\{gray\}\{ 0.45***\} & -0.22**  & $\backslash$colorbox\{gray\}\{ 0.50***\} & $\backslash$colorbox\{gray\}\{ 0.35***\} & $\backslash$colorbox\{gray\}\{ 0.46***\} & $\backslash$colorbox\{gray\}\{ 0.53***\} & -0.03  \\ 
+  Burghersdorp & $\backslash$colorbox\{gray\}\{ 0.53***\} & $\backslash$colorbox\{gray\}\{ 0.60***\} & -0.25**  & $\backslash$colorbox\{gray\}\{ 0.41***\} & $\backslash$colorbox\{gray\}\{ 0.51***\} &  0.14  & $\backslash$colorbox\{gray\}\{ 0.49***\} & $\backslash$colorbox\{gray\}\{ 0.68***\} \\ 
+  Aliwal North & $\backslash$colorbox\{gray\}\{ 0.76***\} & $\backslash$colorbox\{gray\}\{ 0.48***\} &  0.13  & $\backslash$colorbox\{gray\}\{ 0.58***\} & $\backslash$colorbox\{gray\}\{ 0.70***\} & $\backslash$colorbox\{gray\}\{ 0.56***\} & $\backslash$colorbox\{gray\}\{ 0.70***\} & $\backslash$colorbox\{gray\}\{ 0.46***\} \\ 
+  Dordrecht & $\backslash$colorbox\{gray\}\{ 0.57***\} & $\backslash$colorbox\{gray\}\{ 0.31***\} &  0.01  & $\backslash$colorbox\{gray\}\{ 0.44***\} & $\backslash$colorbox\{gray\}\{ 0.65***\} & $\backslash$colorbox\{gray\}\{ 0.30***\} & $\backslash$colorbox\{gray\}\{ 0.77***\} & $\backslash$colorbox\{gray\}\{ 0.49***\} \\ 
+  Tarkastad & $\backslash$colorbox\{gray\}\{ 0.48***\} & $\backslash$colorbox\{gray\}\{ 0.28***\} & $\backslash$colorbox\{gray\}\{ 0.42***\} & $\backslash$colorbox\{gray\}\{ 0.28***\} & $\backslash$colorbox\{gray\}\{ 0.76***\} &  0.21**  & $\backslash$colorbox\{gray\}\{ 0.83***\} & $\backslash$colorbox\{gray\}\{ 0.77***\} \\ 
+   \hline
+\end{tabular}
+}
+\end{table}

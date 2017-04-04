@@ -79,7 +79,7 @@ g
 
 
 #dev.copy(png,"area.png")
-png(filename = "area2.png", width = 600, height = 360)
+#png(filename = "area2.png", width = 600, height = 360)
 #Plot surface area and prices by medium
 artplot <- subset(artdata, med_code!="NA")
 g <- ggplot(artplot, aes(x=lnarea, y=lnprice))
@@ -89,11 +89,11 @@ g <- g + xlab("log of Surface Area")
 g <- g + labs(colour = "Medium")
 g <- g + guides(colour = guide_legend(override.aes = list(size=5)))
 g
-dev.off()
+#dev.off()
 
-library(png)
-library(grid)
-grid.raster(readPNG("area2.png"))
+#library(png)
+#library(grid)
+#grid.raster(readPNG("area2.png"))
 
 
 
@@ -915,4 +915,19 @@ xt <- xtable(datums, caption="Dates of explosive behaviour")
 print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
 
 
-
+#---------------------------------------
+png(file = "Art_plot.png", width=720,height=480)
+index_plot <- all_indices[,c(1,2,6,10)]
+colnames(index_plot) <- c("Date","Median","Hedonic","ps-Repeat Sales")
+index_plot <- melt(index_plot, id="Date")  # convert to long format
+index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
+g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
+g <- g + geom_point(size = 1) 
+g <- g + geom_line()
+g <- g + ylab("Index")
+g <- g + xlab("")
+g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
+g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
+g
+dev.off()

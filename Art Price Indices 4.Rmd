@@ -661,12 +661,24 @@ The full pooled sample estimation results are reported in Table 1. The coefficie
 
 ```{r table1, echo=FALSE, results='asis', message=FALSE, cache = TRUE}
 #Full model for regression results
-list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
+#Full model for regression results
+list_expl_vars1 <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
                     "nr_works","lnrep","timedummy")
-expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+"))) 
+
+expl_vars1 <- as.formula(paste("lnprice~",paste(list_expl_vars1,collapse="+"))) 
 modeldata <- artdata 
-model <- lm(expl_vars, data=modeldata) 
-stargazer(model, title = "Hedonic Regression results", omit=c("timedummy"),omit.labels = "Quarterly dummies", header=FALSE, single.row = TRUE, type = "latex", table.placement = "!h")
+model1 <- lm(expl_vars1, data=modeldata) 
+
+#Full model for regression results
+list_expl_vars2 <- c("lnarea","ah_code","med_code","dum_signed","dum_dated",  
+                    "nr_works","lnrep","lnarea:med_code","timedummy")
+
+expl_vars2 <- as.formula(paste("lnprice~",paste(list_expl_vars2,collapse="+"))) 
+modeldata <- artdata 
+model2 <- lm(expl_vars2, data=modeldata) 
+stargazer(model2, title = "Hedonic Regression results", omit=c("lnarea:med_code","timedummy"),
+          omit.labels = c("Size Medium Interactions","Quarterly dummies"), header=FALSE, single.row = TRUE, type = "latex", 
+          table.placement = "!h")
 ```
 
 To allow for shifts the implicit prices, two adjacent-period or chain-linked indices are calculated by estimating separate models for adjacent sub-samples. There is a trade-off in selecting the length of the estimation window. Shorter estimation windows decrease the likelihood of large breaks but also decrease the number of observations used to estimate the parameters [@Dorsey2010]. 1-year and 2-year estimation windows are selected, similar to @Dorsey2010 in the context of real estate and @Renneboog2012 in the context of art. This seems to be reasonable for the South African art market, where large auctions are held relatively infrequently. The indices are then calculated by chain-linking the estimates together, as Figure 6 illustrates for the 2-year version of the index.

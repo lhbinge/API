@@ -2,7 +2,7 @@
 # FULL SAMPLE MODEL
 #-------------------
 
-full_model <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
+full_model_a <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed", "dum_dated",  
                                                  "nr_works","artist","timedummy")) {
     if("artist" %in% list_expl_vars) { 
         modeldata <- subset(artdata, artdata$rank_all<max(artdata$rank_all,na.rm=TRUE))

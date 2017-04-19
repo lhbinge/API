@@ -12,6 +12,8 @@ full_model_a <- function(artdata, list_expl_vars=c("lnarea","ah_code","med_code"
     time_results <- summary(model_all)$coefficients[grepl("time", rownames(summary(model_all)$coefficients)),1]
     time_results <- as.data.frame(time_results)
     time_results$index_all <- exp(time_results$time_results)*100
+    time_results$Date <- sub("timedummy","",row.names(time_results))
+    time_results <- merge(datums,time_results,by="Date",all=TRUE)[,c(1,4)]
     return(time_results)
 }
 

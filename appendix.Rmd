@@ -1,0 +1,18 @@
+---
+output: md_document    
+fontsize: 12pt
+geometry: margin=1in
+---
+
+```{r ap, echo=FALSE, results='asis',warning=FALSE, message=FALSE, cache = TRUE}
+setwd("C:\\Users\\Laurie\\OneDrive\\Documents\\BING\\Art Price Index\\R Code")
+suppressMessages(library(xtable))
+
+all_indices <- read.csv("all_indices.csv", header=TRUE, sep=",",na.strings = "", skipNul = TRUE)
+colnames(all_indices)[2:3] <- c("Median","Fisher")
+xt <- xtable(all_indices[,c(1,2,4,5,9,10)], caption="Art Price Indices (2000Q1=100)")
+print(xt, "latex",comment=FALSE, include.rownames=FALSE,
+      caption.placement = getOption("xtable.caption.placement", "top"),scalebox=0.7)
+
+```
+

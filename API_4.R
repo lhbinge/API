@@ -60,21 +60,9 @@ rankings$rank_all <- dense_rank(desc(rankings$n))    #rank by density, with no g
 rankings$rank_total <- row_number(desc(rankings$n))  #equivalent to rank(ties.method = "first")
 rankings$n <- NULL
 
-artdata <- merge(artdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
+#artdata <- merge(artdata, rankings, by.x="artist", by.y="artist",all.x=TRUE)
 
 
-##----------------------
-##Rank Artists by Value
-value <- aggregate(artdata$hammer_price, by=list(artdata$artist), FUN = sum)
-volume <- aggregate(artdata$hammer_price, by=list(artdata$artist), FUN = length)
-value <- cbind(value,volume[,2],value$x/volume$x)    
-colnames(value) <- c("artist","value","volume","ave_price")
-
-rankings$value <- row_number(desc(value$value)) 
-rankings$volume <- row_number(desc(value$volume))
-rankings$ave_price <- row_number(desc(value$ave_price))
-
-artdata <- merge(artdata, rankings[,c(1,4,6)], by.x="artist", by.y="artist",all.x=TRUE)
 
 #-------------------------------
 #Plot total sales by auction house
@@ -217,6 +205,26 @@ artdata$med_code <- factor(artdata$med_code, labels=c("Acrylic","Drawing","Mixed
 #The result: index of average price per artist adjusted for quality, relative to the base artist 
 #It can replace the artist dummies as a continuous variable in a second regression of equation 1 
 
+##----------------------
+##Rank Artists by Value
+value <- aggregate(artdata$hammer_price, by=list(artdata$artist), FUN = sum)
+volume <- aggregate(artdata$hammer_price, by=list(artdata$artist), FUN = length)
+value <- cbind(value,volume[,2],value$x/volume$x)    
+colnames(value) <- c("artist","value","volume","ave_price")
+
+rankings <- count(artdata, artist)
+#rankings <- rankings[order(rankings$n, decreasing = TRUE),]
+rankings$rank_all <- dense_rank(desc(rankings$n))    #rank by density, with no gaps (ties = equal)
+rankings$rank_total <- row_number(desc(rankings$n))  #equivalent to rank(ties.method = "first")
+rankings$n <- NULL
+
+rankings$value <- row_number(desc(value$value)) 
+rankings$volume <- row_number(desc(value$volume))
+rankings$ave_price <- row_number(desc(value$ave_price))
+
+artdata <- merge(artdata, rankings[,c(1,4,6)], by.x="artist", by.y="artist",all.x=TRUE)
+
+##----------------------
 
 #dev.copy(png,"area.png")
 png(filename = "reputation.png", width = 600, height = 360)
@@ -680,7 +688,8 @@ index_plot <- melt(all_indices[,c(1,2,5,10)], id="Date")  # convert to long form
 index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 1) 
-g <- g + geom_line()
+g <- g + geom_line(aes(linetype=variable))
+g <- g + scale_linetype_manual(values = c(4,1,2))
 g <- g + ylab("Index") + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
@@ -753,11 +762,6 @@ print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.p
 
 ##Compared to other art markets
 assets <- read.csv("Assets.csv", header=TRUE, na.strings = "", skipNul = TRUE)
-##Re-weighted to 2000=100
-#rw_assets <- assets
-#for(i in 2:8) {
-#    rw_assets[,i] <- assets[,i]/mean(assets[1:4,i])*100 
-#}
 
 index_plot <- cbind(all_indices[,c(1,5,10)],assets[,c(6,7,8)])
 index_plot <- melt(index_plot, id="Date")  # convert to long format
@@ -795,36 +799,121 @@ print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.p
 
 
 #========================================
-#Robustness
+#Segments
 #========================================
-#Full model for regression results
+summary(artdata$price)
+sum(artdata$price<=2400,na.rm = TRUE)
+sum(artdata$price>2400 & artdata$rank_total<22000,na.rm = TRUE)
+sum(artdata$price>=22000,na.rm = TRUE)
+
+#Segment by prices
 source("full_model.R")
-list_expl_vars <- c("lnarea","ah_code","med_code","lnsculpt_area","dum_signed","dum_dated",  
+
+list_expl_vars <- c("lnarea","ah_code","med_code","dum_signed","dum_dated",  
                     "nr_works","artist","med_code:lnarea","timedummy")
-model1 <- full_model_a(artdata,list_expl_vars)
-model1[,1] <- hedonic_indices[-1,1]
-colnames(model1) <- c("Date","Artist_dummies")
-write.csv(model1,"model1.csv")
+model4.1 <- full_model_a(artdata[artdata$price<=2400,],list_expl_vars) 
+model4.2 <- full_model_a(artdata[artdata$price>2400 & artdata$price<22000,],list_expl_vars) 
+model4.3 <- full_model_a(artdata[artdata$price>=22000,],list_expl_vars) 
 
-#model1 <- read.csv("model1.csv", header=TRUE, sep=",",na.strings = "", skipNul = TRUE)
+pr_seg <- cbind(model4.1[,c(1,2)],model4.2[,2],model4.3[,2])
+colnames(pr_seg) <- c("Date", "Lower", "Middle", "Upper")
+pr_seg <- cbind(Date=factor(levels(artdata$timedummy)),
+                rbind(c(seq(100,100, length.out=2)),pr_seg[,-1]))
 
-#---------------------------------------------------
+
+
+#rw_assets <- function(indeks)
+#    for(i in 2:ncol(indeks)) {
+#        indeks[,i] <- indeks[,i]/mean(indeks[1:4,i])*100 
+#        return(indeks)
+#    }
+
+#pr_seg <- rw_assets(pr_seg)
+
+#model4.1 <- ps.repsales2(artdata[artdata$price<=2400,]) 
+#model4.2 <- ps.repsales2(artdata[artdata$price>2400 & artdata$price<22000,]) 
+#model4.3 <- ps.repsales2(artdata[artdata$price>=22000,]) 
+
+#pr_seg <- cbind(pr_seg,model4.1[,2],model4.2[,2],model4.3[,2])
+#colnames(pr_seg)[5:7] <- c("Lower.ps", "Middle.ps", "Upper.ps")
+
 list_expl_vars <- c("lnarea","ah_code","med_code","dum_signed","dum_dated",  
                     "nr_works","lnrep","med_code:lnarea","timedummy")
-expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
-quant <- rq(expl_vars, tau=c(0.25,0.5,0.75), data=artdata)
-quant_results <- coef(quant)[grepl("time", rownames(coef(quant))),1:3]
-quant_results <- as.data.frame(quant_results)
-quant_results <- exp(quant_results)*100
-quant_results[,4] <- hedonic_indices[-1,1]
-write.csv(quant_results,"quant_results.csv")
+aggregate(artdata$hammer_price, by=list(artdata$timedummy), FUN <- function(x) { 
+    i <- summary(x)[2]
+    data <- artdata[artdata$price<=i,]})
+model4.1 <- full_model_a(data,list_expl_vars) 
 
-quant_results <- read.csv("quant_results.csv", header=TRUE, sep=",",na.strings = "", skipNul = TRUE)[,c(5,2,3,4)]
-colnames(quant_results) <- c("Date","tau=0.25","tau=0.50","tau=0.75")
-quant_results <- cbind(Date=factor(levels(artdata$timedummy)),
-                       rbind(c(seq(100,100, length.out=2)),quant_results[,-1]))
+aggregate(artdata$hammer_price, by=list(artdata$timedummy), FUN <- function(x) { 
+    i <- summary(x)[2]
+    j <- summary(x)[5]
+    data <- artdata[artdata$price>i & artdata$price<j,]})
+model4.2 <- full_model_a(data,list_expl_vars) 
+
+aggregate(artdata$hammer_price, by=list(artdata$timedummy), FUN <- function(x) { 
+    j <- summary(x)[5]
+    data <- artdata[artdata$price>=k,]})
+model4.3 <- full_model_a(data,list_expl_vars) 
+
 #---------------------------------------------------
+#Segment by volume
+summary(artdata$rank_total)
+sum(artdata$rank_total<=18,na.rm = TRUE)
+sum(artdata$rank_total>18 & artdata$rank_total<252,na.rm = TRUE)
+sum(artdata$rank_total>=252,na.rm = TRUE)
+
 source("full_model.R")
+list_expl_vars <- c("lnarea","ah_code","med_code","dum_signed","dum_dated",  
+                    "nr_works","artist","med_code:lnarea","timedummy")
+model4.1 <- full_model_a(artdata[artdata$rank_total>=252,],list_expl_vars) 
+model4.2 <- full_model_a(artdata[artdata$rank_total>18 & artdata$rank_total<252,],list_expl_vars) 
+model4.3 <- full_model_a(artdata[artdata$rank_total<=18,],list_expl_vars) 
+
+vol_seg <- cbind(model4.1,model4.2[,2],model4.3[,2])
+colnames(vol_seg) <- c("Date", "Lower", "Middle", "Upper")
+
+vol_seg <- cbind(Date=factor(levels(artdata$timedummy)),
+                 rbind(c(seq(100,100, length.out=2)),vol_seg[,-1]))
+#---------------------------------------------------
+summary(artdata$value)
+sum(artdata$value<=27,na.rm = TRUE)
+sum(artdata$value>27 & artdata$value<365,na.rm = TRUE)
+sum(artdata$value>=365,na.rm = TRUE)
+
+list_expl_vars <- c("lnarea","ah_code","med_code","dum_signed","dum_dated",  
+                    "nr_works","artist","med_code:lnarea","timedummy")
+model4.1 <- full_model_a(artdata[artdata$value>=365,],list_expl_vars) 
+model4.2 <- full_model_a(artdata[artdata$value>27 & artdata$value<365,],list_expl_vars) 
+model4.3 <- full_model_a(artdata[artdata$value<=27,],list_expl_vars) 
+
+val_seg <- cbind(model4.1,model4.2[,2],model4.3[,2])
+colnames(val_seg) <- c("Date", "Lower", "Middle", "Upper")
+
+val_seg <- cbind(Date=factor(levels(artdata$timedummy)),
+                 rbind(c(seq(100,100, length.out=2)),val_seg[,-1]))
+
+
+#---------------------------------------------------
+summary(artdata$ave_price)
+sum(artdata$ave_price<=262,na.rm = TRUE)
+sum(artdata$ave_price>262 & artdata$ave_price<1693,na.rm = TRUE)
+sum(artdata$ave_price>=1693,na.rm = TRUE)
+
+source("full_model.R")
+list_expl_vars <- c("lnarea","ah_code","med_code","dum_signed","dum_dated",  
+                    "nr_works","artist","med_code:lnarea","timedummy")
+model4.1 <- full_model_a(artdata[artdata$ave_price>=1693,],list_expl_vars) 
+model4.2 <- full_model_a(artdata[artdata$ave_price>262 & artdata$ave_price<1693,],list_expl_vars) 
+model4.3 <- full_model_a(artdata[artdata$ave_price<=262,],list_expl_vars) 
+
+ave_seg <- cbind(model4.1,model4.2[,2],model4.3[,2])
+colnames(ave_seg) <- c("Date", "Lower", "Middle", "Upper")
+
+ave_seg <- cbind(Date=factor(levels(artdata$timedummy)),
+                 rbind(c(seq(100,100, length.out=2)),ave_seg[,-1]))
+
+#---------------------------------------------------
+
 list_expl_vars <- c("lnarea","ah_code","dum_signed","dum_dated","nr_works",
                     "artist","timedummy")
 drawing     <- full_model_a(subset(artdata, artdata$med_code=="Drawing"),list_expl_vars)
@@ -855,7 +944,7 @@ sales <- aggregate(artdata$hammer_price,by=list(artdata$med_code,artdata$timedum
 sales <- dcast(sales, Group.2 ~ Group.1)
 sales <- sales[-1]
 sales <- sales[,c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut","Mixed Media","Sculpture","Photography", 
-           "Other")]
+                  "Other")]
 sales <- sales/rowSums(sales,na.rm =TRUE)
 
 hed_strat <- as.data.frame(cbind(mediums[,-1],sales))
@@ -863,110 +952,20 @@ hed_strat <- na.locf(hed_strat, na.rm=FALSE)
 hed_strat <- na.locf(hed_strat, na.rm=FALSE, fromLast = TRUE)
 
 mediums$Laspayres <- priceIndex(c("drawing","watercolour","oil","acrylic","print","mixed","sculpture","photo","other"),
-                  c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut","Mixed Media","Sculpture","Photography", 
-                    "Other"), 1, hed_strat, "Laspeyres" ,na.rm=TRUE)*100
+                                c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut","Mixed Media","Sculpture","Photography", 
+                                  "Other"), 1, hed_strat, "Laspeyres" ,na.rm=TRUE)*100
 mediums$Paasche <- priceIndex(c("drawing","watercolour","oil","acrylic","print","mixed","sculpture","photo","other"),
-                   c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut","Mixed Media","Sculpture","Photography", 
-                     "Other"), 1, hed_strat, "Paasche" ,na.rm=TRUE)*100
+                              c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut","Mixed Media","Sculpture","Photography", 
+                                "Other"), 1, hed_strat, "Paasche" ,na.rm=TRUE)*100
 mediums$Fisher <- priceIndex(c("drawing","watercolour","oil","acrylic","print","mixed","sculpture","photo","other"),
-                   c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut","Mixed Media","Sculpture","Photography", 
-                     "Other"), 1, hed_strat, "Fisher" ,na.rm=TRUE)*100
-
-#---------------------------------------------------
-#Segment by prices
-summary(artdata$price)
-sum(artdata$price<=2400,na.rm = TRUE)
-sum(artdata$price>2400 & artdata$rank_total<22000,na.rm = TRUE)
-sum(artdata$price>=22000,na.rm = TRUE)
-
-list_expl_vars <- c("lnarea","ah_code","med_code","dum_signed","dum_dated",  
-                    "nr_works","lnrep","med_code:lnarea","timedummy")
-model4.1 <- full_model_a(artdata[artdata$price<=2400,],list_expl_vars) 
-model4.2 <- full_model_a(artdata[artdata$price>2400 & artdata$price<22000,],list_expl_vars) 
-model4.3 <- full_model_a(artdata[artdata$price>=22000,],list_expl_vars) 
-
-pr_seg <- cbind(model4.1,model4.2[,2],model4.3[,2])
-colnames(pr_seg) <- c("Date", "Lower", "Middle", "Upper")
-
-pr_seg <- cbind(Date=factor(levels(artdata$timedummy)),
-             rbind(c(seq(100,100, length.out=2)),pr_seg[,-1]))
-
-#model4.1 <- ps.repsales2(artdata[artdata$price<=2400,]) 
-#model4.2 <- ps.repsales2(artdata[artdata$price>2400 & artdata$price<22000,]) 
-#model4.3 <- ps.repsales2(artdata[artdata$price>=22000,]) 
-
-#pr_seg <- cbind(pr_seg,model4.1[,2],model4.2[,2],model4.3[,2])
-#colnames(pr_seg)[5:7] <- c("Lower.ps", "Middle.ps", "Upper.ps")
-
-#---------------------------------------------------
-#Segment by volume
-summary(artdata$rank_total)
-sum(artdata$rank_total<=18,na.rm = TRUE)
-sum(artdata$rank_total>18 & artdata$rank_total<252,na.rm = TRUE)
-sum(artdata$rank_total>=252,na.rm = TRUE)
-
-list_expl_vars <- c("lnarea","ah_code","med_code","dum_signed","dum_dated",  
-                    "nr_works","lnrep","med_code:lnarea","timedummy")
-model4.1 <- full_model_a(artdata[artdata$rank_total>=252,],list_expl_vars) 
-model4.2 <- full_model_a(artdata[artdata$rank_total>18 & artdata$rank_total<252,],list_expl_vars) 
-model4.3 <- full_model_a(artdata[artdata$rank_total<=18,],list_expl_vars) 
-
-vol_seg <- cbind(model4.1,model4.2[,2],model4.3[,2])
-colnames(vol_seg) <- c("Date", "Lower", "Middle", "Upper")
-
-vol_seg <- cbind(Date=factor(levels(artdata$timedummy)),
-                rbind(c(seq(100,100, length.out=2)),vol_seg[,-1]))
-#---------------------------------------------------
-summary(artdata$value)
-sum(artdata$value<=27,na.rm = TRUE)
-sum(artdata$value>27 & artdata$value<365,na.rm = TRUE)
-sum(artdata$value>=365,na.rm = TRUE)
-
-list_expl_vars <- c("lnarea","ah_code","med_code","dum_signed","dum_dated",  
-                    "nr_works","lnrep","med_code:lnarea","timedummy")
-model4.1 <- full_model_a(artdata[artdata$value>=365,],list_expl_vars) 
-model4.2 <- full_model_a(artdata[artdata$value>27 & artdata$value<365,],list_expl_vars) 
-model4.3 <- full_model_a(artdata[artdata$value<=27,],list_expl_vars) 
-
-val_seg <- cbind(model4.1,model4.2[,2],model4.3[,2])
-colnames(val_seg) <- c("Date", "Lower", "Middle", "Upper")
-
-val_seg <- cbind(Date=factor(levels(artdata$timedummy)),
-                 rbind(c(seq(100,100, length.out=2)),val_seg[,-1]))
-#---------------------------------------------------
-summary(artdata$ave_price)
-sum(artdata$ave_price<=262,na.rm = TRUE)
-sum(artdata$ave_price>262 & artdata$ave_price<1693,na.rm = TRUE)
-sum(artdata$ave_price>=1693,na.rm = TRUE)
-
-list_expl_vars <- c("lnarea","ah_code","med_code","dum_signed","dum_dated",  
-                    "nr_works","lnrep","med_code:lnarea","timedummy")
-model4.1 <- full_model_a(artdata[artdata$ave_price>=1693,],list_expl_vars) 
-model4.2 <- full_model_a(artdata[artdata$ave_price>262 & artdata$ave_price<1693,],list_expl_vars) 
-model4.3 <- full_model_a(artdata[artdata$ave_price<=262,],list_expl_vars) 
-
-ave_seg <- cbind(model4.1,model4.2[,2],model4.3[,2])
-colnames(ave_seg) <- c("Date", "Lower", "Middle", "Upper")
-
-ave_seg <- cbind(Date=factor(levels(artdata$timedummy)),
-                 rbind(c(seq(100,100, length.out=2)),ave_seg[,-1]))
-
-#---------------------------------------------------
+                             c("Drawing", "Watercolour", "Oil", "Acrylic", "Print/Woodcut","Mixed Media","Sculpture","Photography", 
+                               "Other"), 1, hed_strat, "Fisher" ,na.rm=TRUE)*100
 
 
-#---------------------------------------------------
-rw_assets <- function(indeks)
-for(i in 2:ncol(indeks)) {
-    indeks[,i] <- indeks[,i]/mean(indeks[1:4,i])*100 
-    return(indeks)
-}
-
-alt <- rw_assets(alt)
-
-index_plot <- melt(pr_seg, id="Date")  # convert to long format
+index_plot <- melt(mediums[,c(1:4,6,7)], id="Date")  # convert to long format
 index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
-g <- g + geom_point(size = 1) 
+g <- g + geom_point(size = 0.8) 
 g <- g + geom_line()
 g <- g + ylab("Index") + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
@@ -974,8 +973,26 @@ g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
 g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
 g
 
+
 #---------------------------------------------------
-index_plot <- pr_seg[,]
+list_expl_vars <- c("lnarea","ah_code","med_code","dum_signed","dum_dated",  
+                    "nr_works","lnrep","med_code:lnarea","timedummy")
+expl_vars <- as.formula(paste("lnprice~",paste(list_expl_vars,collapse="+")))
+quant <- rq(expl_vars, tau=c(0.25,0.5,0.75), data=artdata)
+quant_results <- coef(quant)[grepl("time", rownames(coef(quant))),1:3]
+quant_results <- as.data.frame(quant_results)
+quant_results <- exp(quant_results)*100
+quant_results[,4] <- hedonic_indices[-1,1]
+write.csv(quant_results,"quant_results.csv")
+
+quant_results <- read.csv("quant_results.csv", header=TRUE, sep=",",na.strings = "", skipNul = TRUE)[,c(5,2,3,4)]
+colnames(quant_results) <- c("Date","tau=0.25","tau=0.50","tau=0.75")
+quant_results <- cbind(Date=factor(levels(artdata$timedummy)),
+                       rbind(c(seq(100,100, length.out=2)),quant_results[,-1]))
+
+
+#---------------------------------------------------
+index_plot <- pr_seg
 index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 index_plot <- melt(index_plot, id="Date")  # convert to long format
 g1 <- ggplot(index_plot, aes(x=Date,y=value,group=variable,colour=variable)) 
@@ -988,20 +1005,20 @@ g1 <- g1 + theme(legend.position="bottom")
 g1 <- g1 + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g1 <- g1 + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
 
-index_plot <- val_seg[,]
+index_plot <- ave_seg
 index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 index_plot <- melt(index_plot, id="Date")  # convert to long format
 g2 <- ggplot(index_plot, aes(x=Date,y=value,group=variable,colour=variable)) 
 g2 <- g2 + geom_line()
 g2 <- g2 + geom_point(size = 0.5) 
 g2 <- g2 + theme(legend.title=element_blank())
-g2 <- g2 + ggtitle("Segmented by Price") 
+g2 <- g2 + ggtitle("Segmented by Artist Value") 
 g2 <- g2 + ylab("") + xlab("")
 g2 <- g2 + theme(legend.position="bottom")
 g2 <- g2 + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g2 <- g2 + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
 
-index_plot <- mediums[,c(1:4,13)]
+index_plot <- mediums[,c(1:4,6,7)]
 index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 index_plot <- melt(index_plot, id="Date")  # convert to long format
 g3 <- ggplot(index_plot, aes(x=Date,y=value,group=variable,colour=variable)) 
@@ -1014,21 +1031,21 @@ g3 <- g3 + theme(legend.position="bottom")
 g3 <- g3 + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g3 <- g3 + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
 
-index_plot <- quant_results[,]
+index_plot <- quant_results
 index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 index_plot <- melt(index_plot, id="Date")  # convert to long format
 g4 <- ggplot(index_plot, aes(x=Date,y=value,group=variable,colour=variable)) 
 g4 <- g4 + geom_line()
 g4 <- g4 + geom_point(size = 0.5) 
 g4 <- g4 + theme(legend.title=element_blank())
-g4 <- g4 + ggtitle("Quantile Regessions") 
+g4 <- g4 + ggtitle("Quantile Regressions") 
 g4 <- g4 + ylab("Index") + xlab("")
 g4 <- g4 + theme(legend.position="bottom")
 g4 <- g4 + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g4 <- g4 + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
 
 library(gridExtra)
-grid.arrange(g1, g2, g4, g3, ncol=2, nrow =2)
+grid.arrange(g1, g2, g3, g4, ncol=2, nrow =2) 
 
 
 #=====================================
@@ -1182,11 +1199,10 @@ make_real <- function(indeks) {
             indeks[j,i] <- indeks[j,i]/assets$CPI[j]*100 
         }
     }
+    return(indeks)
 }
 real_indices <- make_real(all_indices)
 
-
-##Compared to other assets
 index_plot <- melt(real_indices[,c(-3,-8)], id="Date")  # convert to long format
 index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"), frac = 1)
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
@@ -1275,11 +1291,11 @@ colnames(bubble.test2)[1:9] <- colnames(all_indices[-1])
 
 index_plot <- bubble.test1[,c(1,4,9,11,12,13)]
 index_plot <- melt(index_plot, id="Date")  # convert to long format
-index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"), frac = 1)
+index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
-g <- g + geom_point(size = 0.5) 
+g <- g + geom_point(size = 0.8) 
 g <- g + geom_line(aes(linetype=variable))
-g <- g + scale_linetype_manual(values = c(1,1,1,1,1,4,4))
+g <- g + scale_linetype_manual(values = c(6,1,5,3,3))
 g <- g + ylab("") + xlab("")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
@@ -1288,7 +1304,7 @@ g
 
 index_plot <- bubble.test2[,c(1,4,9,11,12,13)]
 index_plot <- melt(index_plot, id="Date")  # convert to long format
-index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"), frac = 1)
+index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
 g <- g + geom_point(size = 0.5) 
 g <- g + geom_line(aes(linetype=variable))
@@ -1343,11 +1359,11 @@ for(i in 1:7) {
     datums2[2,i] <- datum2[lastNonNA,i]
 }    
 
-datums <- rbind(datums1,datums2)
-datums <- t(datums)
-datums <- rbind(c("Start","End","Start","End"), datums)
-rownames(datums) <- c(' ', colnames(bubble.test1)[1:7])
-xt <- xtable(datums, caption="Dates of explosive behaviour")
+datum <- rbind(datums1,datums2)
+datum <- t(datum)
+datum <- rbind(c("Start","End","Start","End"), datum)
+rownames(datum) <- c(' ', colnames(bubble.test1)[1:7])
+xt <- xtable(datum, caption="Dates of explosive behaviour")
 addtorow <- list()
 addtorow$pos <- list(0)
 addtorow$command <- paste0(paste0('& \\multicolumn{2}{c}{  No Drift  } & \\multicolumn{2}{c}{ Drift }', 
@@ -1359,8 +1375,8 @@ print(xt, "latex",comment=FALSE, add.to.row=addtorow, include.colnames=F,
 
 #---------------------------------------
 #Segmented versions
-
-alt <- cbind(pr_seg[,],val_seg[,-1],mediums[,c(-1,-5,-9,-10)],quant_results[,-1])
+alt <- cbind(pr_seg[,],ave_seg[,-1],mediums[,c(-1,-5,-9,-10)],quant_results[,-1])
+alt <- make_real(alt)
 
 y_indices <- log(na.approx(alt[,-1]))
 bubble.nc <- list()
@@ -1398,7 +1414,7 @@ bubble.test2$Date <- Dates
 colnames(bubble.test1)[1:ncol(y_indices)] <- colnames(alt[-1])
 colnames(bubble.test2)[1:ncol(y_indices)] <- colnames(alt[-1])
 
-index_plot <- bubble.test1[,c(1:3,19)]
+index_plot <- bubble.test1[,c(3,6,9,17,19)]
 index_plot <- melt(index_plot, id="Date")  # convert to long format
 index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"), frac = 1)
 g <- ggplot(data=index_plot,aes(x=Date, y=value, group=variable, colour=variable)) 
@@ -1410,6 +1426,64 @@ g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
 g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
 g
+
+
+#report  bubble period dates
+datum1 <- bubble.test1
+datum1[!is.na(datum1)] <- NA
+datum2 <- bubble.test1
+datum2[!is.na(datum2)] <- NA
+datums1 <- data.frame()
+datums2 <- data.frame()
+
+#bubble.test1 <- bubble.test1[,c(-19)]
+#bubble.test2 <- bubble.test2[,c(-19)]
+
+for(i in 1:15) {
+    for(l in 1:53) {
+        if(bubble.test1[l,i]>bubble.test1$"95%"[l]) { 
+            datum1[l,i] <- bubble.test1[l,"Date"]
+        }
+        if(bubble.test2[l,i]>bubble.test2$"95%"[l]) { 
+            datum2[l,i] <- bubble.test2[l,"Date"]
+        }
+    }
+    if(sum(!is.na(datum1[,i]))>1) {
+        NonNAindex <- which(!is.na(datum1[,i]))
+        firstNonNA <- min(NonNAindex)
+        datums1[1,i] <- datum1[firstNonNA,i]
+        if (NonNAindex[NROW(NonNAindex)-1]==(max(NonNAindex)-1)) { 
+            lastNonNA <- max(NonNAindex)
+        } else lastNonNA <- NonNAindex[NROW(NonNAindex)-1]
+    }
+    
+    datums1[2,i] <- datum1[lastNonNA,i]
+    
+    
+    if(sum(!is.na(datum2[,i]))>1) {
+        NonNAindex <- which(!is.na(datum2[,i]))
+        firstNonNA <- min(NonNAindex)
+        datums2[1,i] <- datum2[firstNonNA,i]
+        lastNonNA <- max(NonNAindex)
+    }    
+    datums2[2,i] <- datum2[lastNonNA,i]
+}    
+
+datum <- rbind(datums1,datums2)
+datum <- t(datum)
+datum <- rbind(c("Start","End","Start","End"), datum)
+rownames(datum) <- c(' ', colnames(bubble.test1)[1:15])
+rownames(datum)[2:7] <- c("price_lower","price_middle","price_upper",
+                          "value_lower","value_middle","value_upper")
+datum[is.na(datum)] <- ""    
+xt <- xtable(datum, caption="Dates of explosive behaviour")
+addtorow <- list()
+addtorow$pos <- list(0)
+addtorow$command <- paste0(paste0('& \\multicolumn{2}{c}{  No Drift  } & \\multicolumn{2}{c}{ Drift }', 
+                                  collapse=''), '\\\\')
+
+print(xt, "latex",comment=FALSE, add.to.row=addtorow, include.colnames=F,
+      caption.placement = getOption("xtable.caption.placement", "top"))
 
 
 #---------------------------------------
@@ -1433,11 +1507,9 @@ dev.off()
 
 
 
-
+##==========
 ##EXTRAS
-
-
-
+##==========
 
 
 weeg <- function(data,w) {

@@ -1,40 +1,5 @@
----
-output: 
-    pdf_document:
-        fig_caption: yes
+```{r setup, include=FALSE}
+library(rmarkdown)
+draft("Art Price Indices 5_J.Rmd", template = "elsevier_article", package = "rticles")
+```
 
----
-
-
-\begin{table}[ht]
-\centering
-\caption{Correlations in Levels} 
-\scalebox{0.7}{
-\begin{tabular}{rllllllll}
-  \hline
- & Cape Town & Port Elizabeth & East London & Kimberley & Cape Town & Port Elizabeth & East London & Kimberley \\ 
-  \hline
-Cape Town &  &  &  &  &  &  &  &  \\ 
-  Port Elizabeth & $\backslash$colorbox\{gray\}\{ 0.35***\} &  &  &  & $\backslash$colorbox\{gray\}\{ 0.34***\} &  &  &  \\ 
-  East London & $\backslash$colorbox\{gray\}\{ 0.27***\} & -0.30*** &  &  & $\backslash$colorbox\{gray\}\{ 0.79***\} & $\backslash$colorbox\{gray\}\{ 0.32***\} &  &  \\ 
-  Kimberley & $\backslash$colorbox\{gray\}\{ 0.77***\} & $\backslash$colorbox\{gray\}\{ 0.38***\} &  0.02  &  & $\backslash$colorbox\{gray\}\{ 0.72***\} &  0.16*  & $\backslash$colorbox\{gray\}\{ 0.52***\} &  \\ 
-  Worcester &  0.16**  & $\backslash$colorbox\{gray\}\{ 0.38***\} & -0.39*** & $\backslash$colorbox\{gray\}\{ 0.38***\} & $\backslash$colorbox\{gray\}\{ 0.96***\} & $\backslash$colorbox\{gray\}\{ 0.31***\} & $\backslash$colorbox\{gray\}\{ 0.80***\} & $\backslash$colorbox\{gray\}\{ 0.73***\} \\ 
-  Malmesbury & $\backslash$colorbox\{gray\}\{ 0.57***\} & $\backslash$colorbox\{gray\}\{ 0.51***\} &  0.21**  & $\backslash$colorbox\{gray\}\{ 0.68***\} & $\backslash$colorbox\{gray\}\{ 0.92***\} & $\backslash$colorbox\{gray\}\{ 0.33***\} & $\backslash$colorbox\{gray\}\{ 0.71***\} & $\backslash$colorbox\{gray\}\{ 0.66***\} \\ 
-  Beaufort West &  0.21**  & $\backslash$colorbox\{gray\}\{ 0.66***\} & -0.20**  & $\backslash$colorbox\{gray\}\{ 0.32***\} & $\backslash$colorbox\{gray\}\{ 0.92***\} & $\backslash$colorbox\{gray\}\{ 0.43***\} & $\backslash$colorbox\{gray\}\{ 0.77***\} & $\backslash$colorbox\{gray\}\{ 0.64***\} \\ 
-  Mossel Bay & $\backslash$colorbox\{gray\}\{ 0.34***\} & $\backslash$colorbox\{gray\}\{ 0.47***\} & -0.33*** & $\backslash$colorbox\{gray\}\{ 0.41***\} & $\backslash$colorbox\{gray\}\{ 0.81***\} &  0.23**  & $\backslash$colorbox\{gray\}\{ 0.83***\} & $\backslash$colorbox\{gray\}\{ 0.74***\} \\ 
-  Clanwilliam & -0.24**  & -0.51*** & $\backslash$colorbox\{gray\}\{ 0.49***\} & -0.13  & $\backslash$colorbox\{gray\}\{ 0.89***\} & $\backslash$colorbox\{gray\}\{ 0.37***\} & $\backslash$colorbox\{gray\}\{ 0.62***\} & $\backslash$colorbox\{gray\}\{ 0.50***\} \\ 
-  Graham's Town & $\backslash$colorbox\{gray\}\{ 0.54***\} & $\backslash$colorbox\{gray\}\{ 0.37***\} &  0.20**  & $\backslash$colorbox\{gray\}\{ 0.65***\} & $\backslash$colorbox\{gray\}\{ 0.64***\} & $\backslash$colorbox\{gray\}\{ 0.73***\} & $\backslash$colorbox\{gray\}\{ 0.66***\} & $\backslash$colorbox\{gray\}\{ 0.36***\} \\ 
-  Port Alfred &  0.13  & $\backslash$colorbox\{gray\}\{ 0.41***\} & -0.08  & $\backslash$colorbox\{gray\}\{ 0.39***\} &  0.23**  &  0.22**  & $\backslash$colorbox\{gray\}\{ 0.47***\} &  0.13  \\ 
-  Graaff-Reinet & $\backslash$colorbox\{gray\}\{ 0.68***\} & $\backslash$colorbox\{gray\}\{ 0.39***\} & -0.06  & $\backslash$colorbox\{gray\}\{ 0.59***\} & $\backslash$colorbox\{gray\}\{ 0.74***\} & $\backslash$colorbox\{gray\}\{ 0.27***\} & $\backslash$colorbox\{gray\}\{ 0.73***\} & $\backslash$colorbox\{gray\}\{ 0.76***\} \\ 
-  Cradock &  0.24**  & $\backslash$colorbox\{gray\}\{ 0.36***\} &  0.05  & $\backslash$colorbox\{gray\}\{ 0.51***\} & $\backslash$colorbox\{gray\}\{ 0.89***\} & $\backslash$colorbox\{gray\}\{ 0.42***\} & $\backslash$colorbox\{gray\}\{ 0.79***\} & $\backslash$colorbox\{gray\}\{ 0.52***\} \\ 
-  Colesberg & $\backslash$colorbox\{gray\}\{ 0.40***\} & $\backslash$colorbox\{gray\}\{ 0.39***\} &  0.10  & $\backslash$colorbox\{gray\}\{ 0.59***\} & $\backslash$colorbox\{gray\}\{ 0.79***\} &  0.24**  & $\backslash$colorbox\{gray\}\{ 0.81***\} & $\backslash$colorbox\{gray\}\{ 0.58***\} \\ 
-  King William's Town & $\backslash$colorbox\{gray\}\{ 0.61***\} & $\backslash$colorbox\{gray\}\{ 0.52***\} &  0.05  & $\backslash$colorbox\{gray\}\{ 0.66***\} & $\backslash$colorbox\{gray\}\{ 0.79***\} & $\backslash$colorbox\{gray\}\{ 0.65***\} & $\backslash$colorbox\{gray\}\{ 0.67***\} & $\backslash$colorbox\{gray\}\{ 0.50***\} \\ 
-  Queen's Town & $\backslash$colorbox\{gray\}\{ 0.66***\} & $\backslash$colorbox\{gray\}\{ 0.45***\} & -0.22**  & $\backslash$colorbox\{gray\}\{ 0.50***\} & $\backslash$colorbox\{gray\}\{ 0.35***\} & $\backslash$colorbox\{gray\}\{ 0.46***\} & $\backslash$colorbox\{gray\}\{ 0.53***\} & -0.03  \\ 
-  Burghersdorp & $\backslash$colorbox\{gray\}\{ 0.53***\} & $\backslash$colorbox\{gray\}\{ 0.60***\} & -0.25**  & $\backslash$colorbox\{gray\}\{ 0.41***\} & $\backslash$colorbox\{gray\}\{ 0.51***\} &  0.14  & $\backslash$colorbox\{gray\}\{ 0.49***\} & $\backslash$colorbox\{gray\}\{ 0.68***\} \\ 
-  Aliwal North & $\backslash$colorbox\{gray\}\{ 0.76***\} & $\backslash$colorbox\{gray\}\{ 0.48***\} &  0.13  & $\backslash$colorbox\{gray\}\{ 0.58***\} & $\backslash$colorbox\{gray\}\{ 0.70***\} & $\backslash$colorbox\{gray\}\{ 0.56***\} & $\backslash$colorbox\{gray\}\{ 0.70***\} & $\backslash$colorbox\{gray\}\{ 0.46***\} \\ 
-  Dordrecht & $\backslash$colorbox\{gray\}\{ 0.57***\} & $\backslash$colorbox\{gray\}\{ 0.31***\} &  0.01  & $\backslash$colorbox\{gray\}\{ 0.44***\} & $\backslash$colorbox\{gray\}\{ 0.65***\} & $\backslash$colorbox\{gray\}\{ 0.30***\} & $\backslash$colorbox\{gray\}\{ 0.77***\} & $\backslash$colorbox\{gray\}\{ 0.49***\} \\ 
-  Tarkastad & $\backslash$colorbox\{gray\}\{ 0.48***\} & $\backslash$colorbox\{gray\}\{ 0.28***\} & $\backslash$colorbox\{gray\}\{ 0.42***\} & $\backslash$colorbox\{gray\}\{ 0.28***\} & $\backslash$colorbox\{gray\}\{ 0.76***\} &  0.21**  & $\backslash$colorbox\{gray\}\{ 0.83***\} & $\backslash$colorbox\{gray\}\{ 0.77***\} \\ 
-   \hline
-\end{tabular}
-}
-\end{table}

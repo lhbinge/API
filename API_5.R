@@ -694,7 +694,7 @@ returns <- as.data.frame(diff(log(ts.all_indices)))
 xt <- xtable(corstarsl(returns), caption="Correlations in DLogs")
 print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
 
-
+#check <- corstarsl(returns)
 ##Comparing index smoothness
 # Check std dev or volatility en AC(1)
 ac.1 <- numeric()
@@ -866,7 +866,6 @@ index_plot <- pr_seg
 index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 index_plot <- melt(index_plot, id="Date")  # convert to long format
 g1 <- ggplot(index_plot, aes(x=Date,y=value,group=variable,colour=variable)) 
-g1 <- g1 + geom_point(size = 0.5) 
 g1 <- g1 + geom_line()
 g1 <- g1 + theme(legend.title=element_blank())
 g1 <- g1 + ggtitle("Segmented by Price") 
@@ -874,45 +873,46 @@ g1 <- g1 + ylab("Index") + xlab("")
 g1 <- g1 + theme(legend.position="bottom")
 g1 <- g1 + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g1 <- g1 + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
+g1 <- g1 + theme(legend.margin=unit(-0.2, "cm"))
 
 index_plot <- ave_seg
 index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 index_plot <- melt(index_plot, id="Date")  # convert to long format
 g2 <- ggplot(index_plot, aes(x=Date,y=value,group=variable,colour=variable)) 
 g2 <- g2 + geom_line()
-g2 <- g2 + geom_point(size = 0.5) 
 g2 <- g2 + theme(legend.title=element_blank())
 g2 <- g2 + ggtitle("Segmented by Artist Value") 
 g2 <- g2 + ylab("") + xlab("")
 g2 <- g2 + theme(legend.position="bottom")
 g2 <- g2 + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g2 <- g2 + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
+g2 <- g2 + theme(legend.margin=unit(-0.2, "cm"))
 
 index_plot <- mediums[,c(1:4,6,7)]
 index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 index_plot <- melt(index_plot, id="Date")  # convert to long format
 g3 <- ggplot(index_plot, aes(x=Date,y=value,group=variable,colour=variable)) 
 g3 <- g3 + geom_line()
-g3 <- g3 + geom_point(size = 0.5) 
 g3 <- g3 + theme(legend.title=element_blank())
 g3 <- g3 + ggtitle("Segmented by Medium") 
-g3 <- g3 + ylab("") + xlab("")
-g3 <- g3 + theme(legend.position="bottom")
+g3 <- g3 + ylab("Index") + xlab("")
+g3 <- g3 + theme(legend.text=element_text(size=8),legend.position="bottom")
 g3 <- g3 + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g3 <- g3 + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
+g3 <- g3 + theme(legend.margin=unit(-0.2, "cm"))
 
 index_plot <- quant_results
 index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
 index_plot <- melt(index_plot, id="Date")  # convert to long format
 g4 <- ggplot(index_plot, aes(x=Date,y=value,group=variable,colour=variable)) 
 g4 <- g4 + geom_line()
-g4 <- g4 + geom_point(size = 0.5) 
 g4 <- g4 + theme(legend.title=element_blank())
 g4 <- g4 + ggtitle("Quantile Regressions") 
-g4 <- g4 + ylab("Index") + xlab("")
+g4 <- g4 + ylab("") + xlab("")
 g4 <- g4 + theme(legend.position="bottom")
 g4 <- g4 + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g4 <- g4 + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
+g4 <- g4 + theme(legend.margin=unit(-0.2, "cm"))
 
 library(gridExtra)
 grid.arrange(g1, g2, g3, g4, ncol=2, nrow =2) 

@@ -1,0 +1,17 @@
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (MiKTeX 2.9 64-bit) (preloaded format=pdftex 2017.4.25)  25 APR 2017 15:50
+entering extended mode
+**"C:/Users/Laurie/OneDrive/Documents/BING/Art Price Index/R Code/elsarticle/do
+c/pdfwidgets.sty"
+
+("C:/Users/Laurie/OneDrive/Documents/BING/Art Price Index/R Code/elsarticle/doc
+/pdfwidgets.sty"
+! Undefined control sequence.
+l.15 \usepackage
+                [dvipsnames,svgnames]{xcolor}
+? 
+! Emergency stop.
+l.15 \usepackage
+                [dvipsnames,svgnames]{xcolor}
+End of file on the terminal!
+
+!  ==> Fatal error occurred, no output PDF file produced!

@@ -68,14 +68,17 @@ rankings$n <- NULL
 
 #-------------------------------
 #Plot total sales by auction house
-artplot <- aggregate(artdata$hammer_price, by=list(artdata$year,artdata$ah_code), FUN = length)
+artplot <- aggregate(artdata$hammer_price, by=list(artdata$timedummy,artdata$ah_code), FUN = length)
+artplot$Group.1 <- as.Date(as.yearqtr(artplot$Group.1, format = "%Y Q%q"))
 g <- ggplot(artplot, aes(x=Group.1, y=x,fill=Group.2))
 g <- g + geom_bar(stat="identity")
 g <- g + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
 g <- g + scale_fill_discrete(name="Auction House")
 g <- g + scale_y_continuous(labels=comma)
 g <- g + ylab("Total Number of Sales (Auction Lots)")
-g <- g + xlab("Date")
+g <- g + xlab(" ")
+g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
+g <- g + guides(fill = guide_legend(reverse = TRUE))
 g
 
 

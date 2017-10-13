@@ -671,7 +671,7 @@ all_indices[is.na(all_indices)]<- 100
 
 #Load pre-calculated indices
 #write.csv(all_indices, "all_indices.csv")
-#all_indices <- read.csv("all_indices.csv", header=TRUE, na.strings = "", skipNul = TRUE)
+#all_indices <- read.csv("all_indices.csv", header=TRUE, na.strings = "", skipNul = TRUE)[,-1]
 
 index_plot <- melt(all_indices[,c(1,2,5,10)], id="Date")  # convert to long format
 index_plot$Date <- as.Date(as.yearqtr(index_plot$Date, format = "%Y Q%q"))
@@ -774,16 +774,42 @@ g <- g + theme(legend.title=element_blank()) + theme(legend.position="bottom")
 g <- g + scale_x_date(labels = date_format("%Y"),breaks = date_breaks("year"))
 g 
 
-all_assets <- cbind(all_indices[,c(6,10)],assets[,c(2,3,4,6,7,8)])
-colnames(all_assets) <- c("SA.Art_Adj2y","SA.Art_ps.RS2","SA.Bonds","SA.Equity","SA.Property","US.Art","UK.Art","French.Art")
+
+source("corstarsl.R")
+
+all_assets <- cbind(all_indices[,c(5,10)],assets[,c(2,3,4,6,7,8)])
+colnames(all_assets) <- c("SA.Art_Adj1y","SA.Art_ps.RS2","SA.Bonds","SA.Equity","SA.Property","US.Art","UK.Art","French.Art")
 ts.all_assets <- as.ts(all_assets,start =c(2000,4),end=c(2015,4),frequency=4) 
 #xt <- xtable(corstarsl(ts.all_assets), caption="Correlations in Levels")
 #print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"))
 dl.all_assets <- as.data.frame(diff(log(ts.all_assets)))
-xt <- xtable(corstarsl(dl.all_assets), caption="Correlations of returns (dlogs)")
-print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"), scalebox = 0.9)
+
+xt1 <- corstarsl(dl.all_assets[,1:5])[,1:2]
+xt2 <- corstarsl(dl.all_assets[,c(1:2,6:8)])[,1:2]
+xt1 <- rbind(xt1,xt2)
+xt1 <- xt1[c(-1:-2,-6:-7),]
+
+#xt1 <- cbind(xt1,c("SA.Art_Adj1y","SA.Art_ps.RS2","US.Art","UK.Art","French.Art"),xt2)
+#colnames(xt1)[5] <- " "
+
+xt2 <- xt2[-1,]
+xt <- xtable(xt1, caption="Correlations of returns (growth rates)")
+print(xt, "latex",comment=FALSE, caption.placement = getOption("xtable.caption.placement", "top"), scalebox = 0.75)
+xt <- xtable(xt2)
+print(xt, "latex",comment=FALSE, scalebox = 0.75)
 
 
+xt1 <- cbind(corstarsl(manufac[,-1]),corstarsl(construct[,-1]))
+xt2 <- cbind(corstarsl(trade[,-1]),corstarsl(services[,-1]))
+
+xt2[3,4:5] <- ""
+xt2[4,6] <- ""
+xt1[1,] <- c("Current","Expected","BER_BCI","Current","Expected","BER_BCI")
+xt2[1,] <- c("Current","Expected","BER_BCI","Current","Expected","BER_BCI")
+colnames(xt1) <- c(" ","Manufacturing"," "," ","Construction"," ")
+colnames(xt2) <- c(" ","Trade"," "," ","Services"," ")
+row.names(xt1) <- c(" ","Expected","BER_BCI","RGDP_Growth")
+row.names(xt2) <- c(" ","Expected","BER_BCI","RGDP_Growth")
 
 #========================================
 #Segments
